@@ -560,76 +560,81 @@
 
 
         // --- Calendar Rendering Logic ---
+// --- Calendar Rendering Logic ---
 
-        function initializeCalendar(dailySummary) {
-            if (typeof FullCalendar === 'undefined') {
-                console.warn("FullCalendar library is not loaded. Cannot initialize calendar.");
-                return;
+function initializeCalendar(dailySummary) {
+    if (typeof FullCalendar === 'undefined') {
+        console.warn("FullCalendar library is not loaded. Cannot initialize calendar.");
+        return;
+    }
+
+    const calendarEl = document.getElementById('calendar');
+
+    if (calendarInstance) {
+        calendarInstance.destroy();
+        calendarInstance = null;
+    }
+
+    const events = [];
+    const dayCellClasses = {}; // Map to store custom class for each day
+
+    dailySummary.forEach(day => {
+        const profit = parseFloat(day.Profit);
+        const isProfit = profit > 0;
+        const isLoss = profit < 0;
+        const calendarDate = day.Date; 
+
+        // 1. Create the event label
+        events.push({
+            title: `${isProfit ? '+' : ''}$${Math.abs(profit).toFixed(2)}`,
+            start: calendarDate,
+            allDay: true, 
+            classNames: isProfit ? ['event-profit'] : (isLoss ? ['event-loss'] : ['event-neutral']),
+            extendedProps: {
+                netAmount: profit
             }
+        });
 
-            const calendarEl = document.getElementById('calendar');
-
-            if (calendarInstance) {
-                calendarInstance.destroy();
-                calendarInstance = null;
-            }
-
-            const events = [];
-            const dayCellClasses = {}; // Map to store custom class for each day
-
-            dailySummary.forEach(day => {
-                const profit = parseFloat(day.Profit);
-                const isProfit = profit > 0;
-                const isLoss = profit < 0;
-                const calendarDate = day.Date; 
-
-                // 1. Create the event label
-                events.push({
-                    title: `${isProfit ? '+' : ''}$${Math.abs(profit).toFixed(2)}`,
-                    start: calendarDate,
-                    allDay: true, 
-                    classNames: isProfit ? ['event-profit'] : (isLoss ? ['event-loss'] : ['event-neutral']),
-                    extendedProps: {
-                        netAmount: profit
-                    }
-                });
-
-                // 2. Map the custom class to the day for full cell coloring
-                if (isProfit) {
-                    dayCellClasses[calendarDate] = 'fc-day-profit';
-                } else if (isLoss) {
-                    dayCellClasses[calendarDate] = 'fc-day-loss';
-                }
-            });
-            
-            // Configure and render the calendar
-            calendarInstance = new FullCalendar.Calendar(calendarEl, {
-                headerToolbar: {
-                    left: 'prev,next today',
-                    center: 'title',
-                    right: 'dayGridMonth'
-                }, 
-                initialDate: events.length > 0 ? events[0].start : new Date(), 
-                navLinks: true,
-                editable: false,
-                selectable: true,
-                themeSystem: 'bootstrap5',
-                
-                events: events,
-                
-                // Use dayCellDidMount to apply the class to the day's background cell
-                dayCellDidMount: function(info) {
-                    const dateKey = formatDateToKey(info.date);
-                    const classToAdd = dayCellClasses[dateKey];
-                    if (classToAdd) {
-                        // The info.el is the <td> element for the day cell
-                        info.el.classList.add(classToAdd);
-                    }
-                }
-            });
-            
-            calendarInstance.render();
+        // 2. Map the custom class to the day for full cell coloring
+        if (isProfit) {
+            dayCellClasses[calendarDate] = 'fc-day-profit';
+        } else if (isLoss) {
+            dayCellClasses[calendarDate] = 'fc-day-loss';
         }
+    });
+    
+    // Configure and render the calendar
+    calendarInstance = new FullCalendar.Calendar(calendarEl, {
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth'
+        }, 
+        initialDate: events.length > 0 ? events[0].start : new Date(), 
+        navLinks: true,
+        editable: false,
+        selectable: true,
+        themeSystem: 'bootstrap5',
+        
+        // --- ADDED THIS LINE TO HIDE WEEKENDS ---
+        weekends: false,
+        // ----------------------------------------
+        
+        events: events,
+        
+        // Use dayCellDidMount to apply the class to the day's background cell
+        dayCellDidMount: function(info) {
+            const dateKey = formatDateToKey(info.date);
+            const classToAdd = dayCellClasses[dateKey];
+            if (classToAdd) {
+                // The info.el is the <td> element for the day cell
+                info.el.classList.add(classToAdd);
+            }
+        }
+    });
+    
+    calendarInstance.render();
+}
 
         /**
          * Ensures the calendar is correctly sized when its tab is made active.
@@ -960,4 +965,5 @@
 </body>
 
 </html>
+
 
