@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Journal</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/6.1.11/main.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    
+    <style>
+        /* Custom Dark Theme Styles */
+        :root {
+            --bs-body-bg: #212529; /* Dark background */
+            --bs-body-color: #f8f9fa; /* Light text */
+            --bs-card-bg: #2d3135; /* Slightly lighter dark card background */
+            --bs-border-color: #a96094;
+            --fc-bg-event-profit: #344252; /* Darker Blue/Grey for Profit */
+            --fc-bg-event-loss: #ff5c5c; /* BRIGHT RED for Loss */
+            --fc-text-color: #f8f9fa;
+	 
+        }
+.fc-h-event .fc-event-main {
+    color: #0dcaf0b3;
+}
+        body {
+            background-color: var(--bs-body-bg) !important;
+            color: var(--bs-body-color) !important;
+            font-family: 'Inter', sans-serif;
+            padding: 20px;
+        }
+
+		.text-bg-info {
+			color: #000 !important;
+			background-color: rgb(143 198 200) !important;
+		}
+
+		.text-bg-danger {
+			color: #fff !important;
+			background-color: rgb(139 38 38) !important;   
+		}
+			
+        /* Apply dark theme to standard Bootstrap components */
+        .card {
+            background-color: var(--bs-card-bg);
+            border-color: var(--bs-border-color);
+            color: var(--bs-body-color);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        }
+
+        .form-control, .btn-secondary {
+            background-color: #3b4045;
+            border-color: #555;
+            color: var(--bs-body-color);
+        }
+
+        .form-control:focus {
+            background-color: #3b4045;
+            color: var(--bs-body-color);
+            border-color: #2bfbfc;
+            box-shadow: 0 0 0 0.25rem rgba(43, 251, 252, 0.25);
+        }
+        
+        /* Custom Tabs Styling */
+        .nav-tabs .nav-link {
+            color: var(--bs-body-color); /* Tab text color */
+            border-color: var(--bs-border-color);
+            background-color: var(--bs-card-bg); /* Tab background color */
+        }
+
+        .nav-tabs .nav-link.active {
+            color: #2bfbfc; /* Active tab text color */
+            background-color: #3b4045; /* Active tab background color */
+            border-color: #2bfbfc #2bfbfc #3b4045; /* Highlight border */
+        }
+
+        /* FullCalendar Custom Theming */
+        .fc {
+            --fc-neutral-bg-color: #3b4045;
+            --fc-border-color: #a96094;
+            --fc-daygrid-event-dot-width: 8px;
+            --fc-page-bg-color: var(--bs-body-bg);
+            --fc-button-hover-bg-color: #555;
+            --fc-button-bg-color: #444;
+            --fc-button-border-color: #666;
+            --fc-button-text-color: #f8f9fa;
+            --fc-today-bg-color: #495057;
+        }
+
+        /* Custom event coloring based on profit/loss */
+        .event-profit {
+            background-color: var(--fc-bg-event-profit);
+            border-color: var(--fc-bg-event-profit);
+            color: var(--fc-text-color); 
+        }
+        
+        .event-loss {
+            background-color: var(--fc-bg-event-loss);
+            border-color: var(--fc-bg-event-loss);
+            color: black; 
+        }
+
+        .event-neutral {
+            background-color: #495057;
+            border-color: #596067;
+            color: var(--fc-text-color);
+        }
+
+        /* --- Full Day Background Coloring --- */
+
+        /* Dim non-month days for visual clarity */
+        .fc .fc-day-other {
+            opacity: 0.7; 
+        }
+   
+.fc-theme-standard td, .fc-theme-standard th {
+    border: 1px solid #a96094;
+}
+       
+        /* Profit Day Background */
+.fc-day-profit {
+    background-color: #495057;
+}
+        
+        /* Loss Day Background */
+        .fc-day-loss {
+            /* Lighter version of loss color for background */
+            background-color: rgba(255, 92, 92, 0.15) !important; 
+        }
+        
+        /* --- END NEW CALENDAR STYLES --- */
+
+.fc-h-event .fc-event-title {
+    display: inline-block;
+    left: 0px;
+    max-width: 100%;
+    overflow: hidden;
+    right: 0px;
+    vertical-align: top;
+    font-size: 38px;
+    align-items: center;
+    text-align: center;
+}
+        /* Message Box Styling (Replacement for alert()) */
+        #messageBox {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1050;
+            padding: 15px 25px;
+            border-radius: 6px;
+            background-color: #2bfbfc;
+            color: black;
+            box-shadow: 0 0 15px rgba(43, 251, 252, 0.5);
+            font-weight: bold;
+            display: none; /* Initially hidden */
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        /* Table specific styles for dark mode */
+        .table-dark {
+            --bs-table-bg: #2d3135;
+            --bs-table-striped-bg: #2a2e32;
+            --bs-table-hover-bg: #353a3f;
+            --bs-table-border-color: #a96094;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container-fluid" style="max-width: 3400px;">
+        <h1 class="text-center mb-4 text-white">Trading Journal</h1>
+
+        <div id="messageBox" role="alert"></div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-md-3">
+                <div class="card p-3 text-center">
+                    <div class="text-secondary small">Current Account Value</div>
+                    <div class="h3 mb-0 text-success" id="stat-current-value">$500.00</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-3 text-center">
+                    <div class="text-secondary small">Total Trades Closed</div>
+                    <div class="h3 mb-0" id="stat-total-trades">0</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-3 text-center">
+                    <div class="text-secondary small">Avg Daily Gain (PNL)</div>
+                    <div class="h3 mb-0 text-success" id="stat-avg-gain-pnl">$0.00</div>
+                    <div class="small" id="stat-avg-gain-percent">0.00%</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-3 text-center">
+                    <div class="text-secondary small">Avg Daily Loss (PNL)</div>
+                    <div class="h3 mb-0 text-danger" id="stat-avg-loss-pnl">$0.00</div>
+                    <div class="small" id="stat-avg-loss-percent">0.00%</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-md-3">
+                <div class="card p-3 text-center">
+                    <div class="text-secondary small">Total Gross Profit</div>
+                    <div class="h3 mb-0 text-info" id="stat-gross-profit">$0.00</div> 
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-3 text-center">
+                    <div class="text-secondary small">Total Gross Loss</div>
+                    <div class="h3 mb-0 text-danger" id="stat-gross-loss">$0.00</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-3 text-center">
+                    <div class="text-secondary small">Winning Day Rate</div>
+                    <div class="h3 mb-0" id="stat-win-rate">0.00%</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-3 text-center">
+                    <div class="text-secondary small">Avg P&L Per Trade</div>
+                    <div class="h3 mb-0 text-secondary" id="stat-avg-pnl">$0.00</div> 
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-lg-6" id="chart-column">
+                <div class="card p-4 h-100">
+                    <h5 class="card-title text-center text-white mb-3">Account Value Over Time (Daily Cash Flow)</h5>
+                    <div class="chart-container">
+                        <canvas id="accountValueChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6" id="right-panel-tabs">
+                <div class="card p-4 h-100 d-flex flex-column">
+                    
+                    <button id="toggleRightPanelButton" class="btn btn-secondary mb-3 w-100" type="button">
+                        Hide Right Panel (Charts Only View)
+                    </button>
+
+                    <ul class="nav nav-tabs nav-justified mb-3" id="mainTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="calendar-tab-btn" data-bs-toggle="tab" data-bs-target="#calendar-tab" type="button" role="tab" aria-controls="calendar-tab" aria-selected="true" onclick="ensureCalendarRerender()">
+                                Daily P&L Calendar
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="trades-tab-btn" data-bs-toggle="tab" data-bs-target="#trades-tab" type="button" role="tab" aria-controls="trades-tab" aria-selected="false">
+                                Closed Trade History
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="settings-tab-btn" data-bs-toggle="tab" data-bs-target="#settings-tab" type="button" role="tab" aria-controls="settings-tab" aria-selected="false">
+                                Settings & Data
+                            </button>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content" id="mainTabsContent" style="flex-grow: 1;">
+                        
+                        <div class="tab-pane fade show active h-100" id="calendar-tab" role="tabpanel" aria-labelledby="calendar-tab-btn">
+                            <h5 class="card-title text-center text-white mb-3">Daily Realized P&L Calendar</h5>
+                            <div id="calendar"></div>
+                        </div>
+                        
+                        <div class="tab-pane fade h-100" id="trades-tab" role="tabpanel" aria-labelledby="trades-tab-btn">
+                            <h5 class="card-title text-white mb-3">Closed Trade History (Matched Positions)</h5>
+                            <div class="table-responsive" style="height: 100%; overflow-y: auto;">
+                                <table class="table table-dark table-striped table-hover rounded-3">
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">Symbol</th>
+                                            <th scope="col">Open Date</th>
+                                            <th scope="col">Close Date</th>
+                                            <th scope="col" class="text-center">Status</th> 
+                                            <th scope="col" class="text-end">Net Profit / Loss ($)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tradesTableBody" style="font-size: 29px;">
+>
+                                        <tr>
+                                            <td colspan="5" class="text-center text-muted">Upload data to view trade history.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="tab-pane fade h-100" id="settings-tab" role="tabpanel" aria-labelledby="settings-tab-btn" style="padding-right: 1200px;">
+                            <h5 class="card-title text-white mb-4">Data Management</h5>
+                            
+                            <div class="mb-4">
+                                <label for="initial-value" class="form-label">Set Initial Account Value ($)</label>
+                                <input type="number" class="form-control" id="initial-value" value="500" min="0" step="100">
+                                <small class="form-text text-muted">This value is the starting point for your Account Value Chart.</small>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label class="form-label">Upload Trade Data</label>
+                                <input type="file" id="fileInput" accept=".csv, .txt" class="d-none">
+                                <button id="uploadDataButton" class="btn btn-primary w-100" type="button" >
+                                    Upload Trades(.csv)
+                                </button>
+                                <small class="form-text text-muted">Upload a new CSV file to load and process trade history.</small>
+                            </div>
+
+                            <div class="text-center mt-5 p-3 text-muted border-top border-secondary">
+                                Note: Changing settings or uploading new data will re-render all charts and statistics.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/6.1.11/index.global.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+
+    <script>
+        /**
+         * script.js
+         * Handles file input, reading, data processing, profit calculation, calendar, 
+         * and Chart.js chart rendering.
+         */
+ 
+        // --- Global Variables ---
+        let financialData = [];      
+        let dailyCashFlowData = [];  
+        let dailyRealizedProfitData = []; 
+        let tradePairsData = [];     
+        let accountValueChart;       
+        let calendarInstance;        // Store the FullCalendar instance
+        let messageBoxTimeout;       
+
+        // --- Chart Color Constants ---
+        const CHART_PROFIT_COLOR_HEX = '#343535'; 
+        const CHART_PROFIT_COLOR_RGB = 'rgba(148, 215, 169, 0.7)'; 
+        const CHART_LOSS_COLOR_HEX = '#343535'; 
+        const CHART_LOSS_COLOR_RGB = 'rgba(255, 92, 92, 0.7)';
+
+        // --- Message Box (Replaces alert()) ---
+
+        function showMessage(message) {
+            const messageBox = document.getElementById('messageBox');
+            if (messageBoxTimeout) {
+                clearTimeout(messageBoxTimeout);
+            }
+
+            messageBox.innerText = message;
+            messageBox.style.display = 'block';
+            messageBox.style.opacity = '1';
+
+            messageBoxTimeout = setTimeout(() => {
+                messageBox.style.opacity = '0';
+                setTimeout(() => {
+                    messageBox.style.display = 'none';
+                }, 300); 
+            }, 3000);
+        }
+
+        // --- Helper Function for Date Formatting (UTC Fix) ---
+
+        function formatDateToKey(dateObj) {
+            if (!(dateObj instanceof Date) || isNaN(dateObj.getTime())) {
+                console.error("Invalid Date object passed to formatDateToKey.");
+                return '';
+            }
+            
+            const year = dateObj.getUTCFullYear();
+            const month = String(dateObj.getUTCMonth() + 1).padStart(2, '0'); 
+            const day = String(dateObj.getUTCDate()).padStart(2, '0');
+            
+            return `${year}-${month}-${day}`;
+        }
+
+
+        // --- Summary Stats Logic ---
+
+        function renderSummaryStats(dailySummary, allTrades) {
+            // Note: The input is now in the Settings tab, but the ID remains the same
+            const initialValue = parseFloat(document.getElementById('initial-value').value) || 0;
+            
+            if (dailySummary.length === 0 && allTrades.length === 0) {
+                 document.getElementById('stat-current-value').innerText = `$${initialValue.toFixed(2)}`;
+                 document.getElementById('stat-total-trades').innerText = '0';
+                 document.getElementById('stat-avg-gain-pnl').innerText = '$0.00';
+                 document.getElementById('stat-avg-gain-percent').innerText = '0.00%';
+                 document.getElementById('stat-avg-loss-pnl').innerText = '$0.00';
+                 document.getElementById('stat-avg-loss-percent').innerText = '0.00%';
+                 document.getElementById('stat-gross-profit').innerText = '$0.00';
+                 document.getElementById('stat-gross-loss').innerText = '$0.00';
+                 document.getElementById('stat-win-rate').innerText = '0.00%';
+                 document.getElementById('stat-avg-pnl').innerText = '$0.00';
+                 return;
+            }
+
+            // --- 1. Calculate Daily PNL Metrics ---
+            let totalGainCount = 0; 
+            let totalLossCount = 0; 
+            let totalGainAmount = 0; 
+            let totalLossAmount = 0; 
+            let totalNetProfit = 0; 
+
+            dailySummary.forEach(day => {
+                const profit = parseFloat(day.Profit); 
+                
+                if (profit > 0) {
+                    totalGainCount++;
+                    totalGainAmount += profit;
+                } else if (profit < 0) {
+                    totalLossCount++;
+                    totalLossAmount += profit; 
+                }
+                totalNetProfit += profit;
+            });
+
+            const avgDailyGainPNL = totalGainCount > 0 ? (totalGainAmount / totalGainCount) : 0;
+            const avgDailyLossPNL = totalLossCount > 0 ? (totalLossAmount / totalLossCount) : 0;
+            
+            const avgDailyGainPercent = initialValue > 0 ? (avgDailyGainPNL / initialValue) * 100 : 0;
+            const avgDailyLossPercent = initialValue > 0 ? (avgDailyLossPNL / initialValue) * 100 : 0;
+            
+            // --- 2. Calculate Final Account Value and Total Trades ---
+
+            let currentAccountValue = dailyCashFlowData.reduce((balance, day) => 
+                balance + parseFloat(day.Profit), initialValue
+            );
+
+            const totalTradeTransactions = allTrades.filter(d => 
+                d.Action === 'Buy to Open' || d.Action === 'Sell to Close'
+            ).length;
+            
+            const totalClosedPositions = totalTradeTransactions / 2;
+
+            const totalDays = totalGainCount + totalLossCount;
+            const winningDayRate = totalDays > 0 ? (totalGainCount / totalDays) * 100 : 0;
+            const avgPnlPerTrade = totalClosedPositions > 0 ? totalNetProfit / totalClosedPositions : 0;
+            
+            // --- 3. Update the HTML Elements ---
+            
+            document.getElementById('stat-current-value').innerText = 
+                `$${currentAccountValue.toFixed(2)}`;
+            
+            document.getElementById('stat-total-trades').innerText = 
+                totalClosedPositions.toLocaleString(); 
+
+            document.getElementById('stat-avg-gain-pnl').innerText = 
+                `$${avgDailyGainPNL.toFixed(2)}`;
+                
+            document.getElementById('stat-avg-gain-percent').innerText = 
+                `${avgDailyGainPercent.toFixed(2)}%`;
+                
+            document.getElementById('stat-avg-loss-pnl').innerText = 
+                `$${Math.abs(avgDailyLossPNL).toFixed(2)}`; 
+                
+            document.getElementById('stat-avg-loss-percent').innerText = 
+                `${Math.abs(avgDailyLossPercent).toFixed(2)}%`;
+
+            const grossLossAbs = Math.abs(totalLossAmount).toFixed(2);
+            const avgPnlClass = avgPnlPerTrade > 0 ? 'text-info' : (avgPnlPerTrade < 0 ? 'text-danger' : 'text-secondary');
+            
+            document.getElementById('stat-gross-profit').innerText = 
+                `$${totalGainAmount.toFixed(2)}`;
+            
+            document.getElementById('stat-gross-loss').innerText = 
+                `$${grossLossAbs}`; 
+
+            document.getElementById('stat-win-rate').innerText = 
+                `${winningDayRate.toFixed(2)}%`; 
+
+            document.getElementById('stat-avg-pnl').innerText = 
+                `${avgPnlPerTrade >= 0 ? '+' : '-'}$${Math.abs(avgPnlPerTrade).toFixed(2)}`;
+            
+            const avgPnlElement = document.getElementById('stat-avg-pnl');
+            avgPnlElement.classList.remove('text-info', 'text-danger', 'text-secondary');
+            avgPnlElement.classList.add(avgPnlClass);
+        }
+
+
+        /**
+         * Calculates cumulative balance and renders the Chart.js Bar Chart.
+         */
+        function renderAccountValueChart(data) {
+            const initialValueInput = document.getElementById('initial-value');
+            const initialValue = parseFloat(initialValueInput.value);
+
+            if (isNaN(initialValue) || initialValue < 0) {
+                initialValueInput.value = 0;
+                return; 
+            }
+            
+            let labels = [];
+            let dataPoints = [];
+            let runningBalance = initialValue;
+
+            data.forEach(day => {
+                labels.push(day.Date); 
+                const dailyCashChange = parseFloat(day.Profit); 
+                
+                runningBalance += dailyCashChange; 
+                dataPoints.push(runningBalance);
+            });
+            
+            if (accountValueChart) {
+                accountValueChart.destroy();
+            }
+
+            const canvasElement = document.getElementById('accountValueChart');
+            if (!canvasElement) return;
+
+            const ctx = canvasElement.getContext('2d');
+            accountValueChart = new Chart(ctx, {
+ type: 'bar', 
+        data: {
+            labels: labels, 
+            datasets: [{
+                label: 'Total Account Value ($)',
+                data: dataPoints, 
+                // *** THIS IS WHERE COLORS ARE DETERMINED ***
+                backgroundColor: dataPoints.map(val => val >= initialValue ? CHART_PROFIT_COLOR_RGB : CHART_LOSS_COLOR_RGB),
+                borderColor: dataPoints.map(val => val >= initialValue ? CHART_PROFIT_COLOR_HEX : CHART_LOSS_COLOR_HEX),
+                // *****************************************
+                borderWidth: 1
+            }]
+        },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            title: { display: true, text: 'Account Value ($)', color: 'white' },
+                            ticks: { color: 'white' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        },
+                        x: {
+                            ticks: { color: 'white' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        }
+                    },
+                    plugins: {
+                        legend: { labels: { color: 'white' } },
+                        title: { display: false } 
+                    }
+                }
+            });
+        }
+
+
+        // --- Calendar Rendering Logic ---
+
+        function initializeCalendar(dailySummary) {
+            if (typeof FullCalendar === 'undefined') {
+                console.warn("FullCalendar library is not loaded. Cannot initialize calendar.");
+                return;
+            }
+
+            const calendarEl = document.getElementById('calendar');
+
+            if (calendarInstance) {
+                calendarInstance.destroy();
+                calendarInstance = null;
+            }
+
+            const events = [];
+            const dayCellClasses = {}; // Map to store custom class for each day
+
+            dailySummary.forEach(day => {
+                const profit = parseFloat(day.Profit);
+                const isProfit = profit > 0;
+                const isLoss = profit < 0;
+                const calendarDate = day.Date; 
+
+                // 1. Create the event label
+                events.push({
+                    title: `${isProfit ? '+' : ''}$${Math.abs(profit).toFixed(2)}`,
+                    start: calendarDate,
+                    allDay: true, 
+                    classNames: isProfit ? ['event-profit'] : (isLoss ? ['event-loss'] : ['event-neutral']),
+                    extendedProps: {
+                        netAmount: profit
+                    }
+                });
+
+                // 2. Map the custom class to the day for full cell coloring
+                if (isProfit) {
+                    dayCellClasses[calendarDate] = 'fc-day-profit';
+                } else if (isLoss) {
+                    dayCellClasses[calendarDate] = 'fc-day-loss';
+                }
+            });
+            
+            // Configure and render the calendar
+            calendarInstance = new FullCalendar.Calendar(calendarEl, {
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth'
+                }, 
+                initialDate: events.length > 0 ? events[0].start : new Date(), 
+                navLinks: true,
+                editable: false,
+                selectable: true,
+                themeSystem: 'bootstrap5',
+                
+                events: events,
+                
+                // Use dayCellDidMount to apply the class to the day's background cell
+                dayCellDidMount: function(info) {
+                    const dateKey = formatDateToKey(info.date);
+                    const classToAdd = dayCellClasses[dateKey];
+                    if (classToAdd) {
+                        // The info.el is the <td> element for the day cell
+                        info.el.classList.add(classToAdd);
+                    }
+                }
+            });
+            
+            calendarInstance.render();
+        }
+
+        /**
+         * Ensures the calendar is correctly sized when its tab is made active.
+         */
+        function ensureCalendarRerender() {
+            if (calendarInstance) {
+                setTimeout(() => {
+                    calendarInstance.updateSize();
+                }, 10);
+            }
+        }
+
+
+        // --- Trade Table Rendering Logic ---
+
+        function renderTradesTable(tradePairs) {
+            const tbody = document.getElementById('tradesTableBody');
+            if (!tbody) return;
+
+            tbody.innerHTML = ''; 
+
+            if (tradePairs.length === 0) {
+                 const row = tbody.insertRow();
+                 row.innerHTML = `<td colspan="5" class="text-center text-muted">No closed trade pairs found in the uploaded data.</td>`;
+                 return;
+            }
+
+            tradePairs.forEach(pair => {
+                const profit = parseFloat(pair.NetProfit);
+                const isProfit = profit > 0;
+                
+                let statusText = 'Break-Even';
+                let statusBgClass = 'text-bg-secondary'; 
+
+                if (isProfit) {
+                    statusText = 'Win';
+                    statusBgClass = 'text-bg-info'; 
+                } else if (profit < 0) {
+                    statusText = 'Loss';
+                    statusBgClass = 'text-bg-danger'; 
+                }
+
+                const statusBadgeHtml = `<span class="badge ${statusBgClass} rounded px-3 py-1">${statusText}</span>`;
+                
+                const profitText = `${isProfit ? '+' : ''}$${Math.abs(profit).toFixed(2)}`;
+                
+                const row = tbody.insertRow();
+                const profitClass = isProfit ? 'text-info' : (profit < 0 ? 'text-danger' : 'text-secondary');
+                
+                row.innerHTML = `
+                    <td>${pair.Symbol}</td>
+                    <td>${pair.OpenDate}</td>
+                    <td>${pair.CloseDate}</td>
+                    <td class="text-center">${statusBadgeHtml}</td>
+                    <td class="text-end ${profitClass}">${profitText}</td>
+                `;
+            });
+        }
+
+
+        // --- Profit/Transfer Calculation Logic ---
+
+        function calculateDailyProfit(data) {
+            const dailyCashMap = new Map();
+            const dailyRealizedProfitMap = new Map();
+            const tradePairs = [];
+
+            // 1. Build the Daily Cash Flow Summary (For Account Chart)
+            data.forEach(transaction => {
+                const dateKey = formatDateToKey(transaction.Date);
+                const amount = transaction.Amount; 
+
+                if (!dailyCashMap.has(dateKey)) {
+                    dailyCashMap.set(dateKey, 0);
+                }
+                dailyCashMap.set(dateKey, dailyCashMap.get(dateKey) + amount);
+            });
+
+            // 2. Process Trades (Matching BTO and STC for Realized P&L)
+            const trades = data.filter(d => 
+                (d.Action === 'Buy to Open' || d.Action === 'Sell to Close') && d.Symbol
+            );
+
+            trades.sort((a, b) => {
+                const dateDiff = a.Date.getTime() - b.Date.getTime();
+                if (dateDiff !== 0) {
+                    return dateDiff;
+                }
+                if (a.Action === 'Buy to Open' && b.Action === 'Sell to Close') {
+                    return -1;
+                }
+                if (a.Action === 'Sell to Close' && b.Action === 'Buy to Open') {
+                    return 1;
+                }
+                return 0; 
+            });
+            
+            const unmatchedBuys = {}; 
+            
+            trades.forEach(trade => {
+                const dateKey = formatDateToKey(trade.Date);
+                const symbol = trade.Symbol;
+                
+                if (!unmatchedBuys[symbol]) {
+                    unmatchedBuys[symbol] = [];
+                }
+
+                if (trade.Action === 'Buy to Open') {
+                    unmatchedBuys[symbol].push(trade);
+                } else if (trade.Action === 'Sell to Close') {
+                    if (unmatchedBuys[symbol].length > 0) {
+                        const matchedBuy = unmatchedBuys[symbol].shift(); 
+                        const netProfit = matchedBuy.Amount + trade.Amount; 
+
+                        tradePairs.push({
+                            OpenDate: formatDateToKey(matchedBuy.Date),
+                            CloseDate: dateKey,
+                            Symbol: symbol,
+                            NetProfit: netProfit.toFixed(2)
+                        });
+                        
+                        if (!dailyRealizedProfitMap.has(dateKey)) {
+                            dailyRealizedProfitMap.set(dateKey, 0);
+                        }
+                        dailyRealizedProfitMap.set(dateKey, dailyRealizedProfitMap.get(dateKey) + netProfit);
+                    }
+                }
+            });
+
+            // 3. Final Summaries
+            const cashFlowSummary = Array.from(dailyCashMap).map(([dateString, profit]) => ({
+                Date: dateString, 
+                Profit: profit 
+            }));
+            
+            const realizedProfitSummary = Array.from(dailyRealizedProfitMap).map(([dateString, profit]) => ({
+                Date: dateString, 
+                Profit: profit 
+            }));
+            
+            const dateSorter = (a, b) => new Date(a.Date) - new Date(b.Date);
+            cashFlowSummary.sort(dateSorter);
+            realizedProfitSummary.sort(dateSorter);
+
+            return {
+                tradePairs: tradePairs,
+                dailyCashFlowSummary: cashFlowSummary,        
+                dailyRealizedProfitSummary: realizedProfitSummary
+            };
+        }
+
+
+        // --- CSV Parsing Logic ---
+
+        function parseCSV(csvContent) {
+            const lines = csvContent.trim().split('\n');
+            const headerLine = lines[0].trim();
+            const headers = (headerLine.match(/"([^"]*)"/g) || []).map(h => h.replace(/"/g, '').trim());
+
+            if (headers.length === 0) {
+                console.error("CSV header format error: Could not find quoted header fields.");
+                return [];
+            }
+            
+            const records = [];
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+
+                const valuesMatch = line.match(/"([^"]*)"/g); 
+                let rawValues = [];
+                
+                if (!valuesMatch || valuesMatch.length !== headers.length) {
+                    rawValues = line.split(',').map(v => v.trim());
+                    if (rawValues.length !== headers.length) {
+                        console.warn(`Skipping malformed row ${i + 1}. Header/Value count mismatch: ${line}`);
+                        continue;
+                    }
+                } else {
+                    rawValues = valuesMatch.map(v => v.replace(/"/g, '').trim());
+                }
+                
+                const record = {};
+                headers.forEach((header, index) => {
+                    let value = rawValues[index];
+
+                    switch (header) {
+                        case 'Date':
+                            record[header] = new Date(value);
+                            break;
+                        case 'Quantity':
+                        case 'Price':
+                        case 'Fees & Comm':
+                        case 'Amount':
+                            let cleanedValue = value.replace(/[$,]/g, '');
+                            record[header] = parseFloat(cleanedValue) || 0; 
+                            break;
+                        default:
+                            record[header] = value;
+                    }
+                });
+                records.push(record);
+            }
+            return records;
+        }
+
+        // --- Right Panel Toggle Logic (Updated) ---
+
+        function toggleRightPanelVisibility() {
+            const chartColumn = document.getElementById('chart-column');
+            const rightPanelTabs = document.getElementById('right-panel-tabs'); 
+            const button = document.getElementById('toggleRightPanelButton');
+
+            if (!chartColumn || !rightPanelTabs || !button) return;
+
+            const isContentVisible = rightPanelTabs.classList.contains('col-lg-6');
+
+            if (isContentVisible) {
+                // HIDE Right Panel (Tabs)
+                button.textContent = 'Show Right Panel';
+                
+                rightPanelTabs.classList.remove('col-lg-6');
+                rightPanelTabs.classList.add('d-none');
+                
+                chartColumn.classList.remove('col-lg-6');
+                chartColumn.classList.add('col-lg-12');
+                
+                renderAccountValueChart(dailyCashFlowData); 
+            } else {
+                // SHOW Right Panel (Tabs)
+                button.textContent = 'Hide Right Panel (Charts Only View)';
+                
+                rightPanelTabs.classList.add('col-lg-6');
+                rightPanelTabs.classList.remove('d-none');
+                
+                chartColumn.classList.remove('col-lg-12');
+                chartColumn.classList.add('col-lg-6');
+                
+                renderAccountValueChart(dailyCashFlowData); 
+                
+                // If the calendar tab is active, ensure it re-renders
+                const calendarTabBtn = document.getElementById('calendar-tab-btn');
+                if (calendarTabBtn && calendarTabBtn.classList.contains('active')) {
+                     ensureCalendarRerender();
+                }
+            }
+        }
+
+
+        // --- DOM and Event Handling ---
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // These elements are now in the Settings tab, but their IDs are the same
+            const uploadButton = document.getElementById('uploadDataButton');
+            const fileInput = document.getElementById('fileInput');
+            const initialValueInput = document.getElementById('initial-value');
+            const toggleButton = document.getElementById('toggleRightPanelButton'); 
+
+            // 1. Toggle Button Listener
+            if (toggleButton) {
+                toggleButton.addEventListener('click', toggleRightPanelVisibility);
+            }
+
+            // 2. File Upload Listener (Logic unchanged, element location changed)
+            if (uploadButton && fileInput) {
+                uploadButton.addEventListener('click', () => {
+                    fileInput.click();
+                });
+
+                fileInput.addEventListener('change', (event) => {
+                    const file = event.target.files[0];
+                    
+                    if (file) {
+                        if (!file.name.toLowerCase().endsWith('.csv') && !file.name.toLowerCase().endsWith('.txt')) {
+                            showMessage('Please upload a CSV or TXT file.');
+                            event.target.value = null; 
+                            return;
+                        }
+                        
+                        const reader = new FileReader();
+
+                        reader.onload = (e) => {
+                            const rawContent = e.target.result;
+                            const parsedData = parseCSV(rawContent);
+                            
+                            if (parsedData.length > 0) {
+                                financialData = parsedData; 
+                                
+                                const { tradePairs, dailyCashFlowSummary, dailyRealizedProfitSummary } = calculateDailyProfit(financialData);
+                                
+                                dailyCashFlowData = dailyCashFlowSummary; 
+                                dailyRealizedProfitData = dailyRealizedProfitSummary;
+                                tradePairsData = tradePairs; 
+                                
+                                // RENDER ALL CONTENT
+                                initializeCalendar(dailyRealizedProfitData); 
+                                renderAccountValueChart(dailyCashFlowData);
+                                renderSummaryStats(dailyRealizedProfitData, financialData); 
+                                renderTradesTable(tradePairsData); 
+                                
+                                showMessage(`Successfully processed ${financialData.length} records. Dashboard updated.`);
+                                
+                            } else {
+                                showMessage("Failed to parse data. Please check the file format.");
+                            }
+                        };
+
+                        reader.readAsText(file);
+                    }
+                });
+            }
+
+            // 3. Initial Value Change Listener (Logic unchanged, element location changed)
+            if (initialValueInput) {
+                initialValueInput.addEventListener('change', () => {
+                    renderSummaryStats(dailyRealizedProfitData, financialData); 
+                    
+                    if (dailyCashFlowData.length > 0) {
+                        renderAccountValueChart(dailyCashFlowData);
+                    }
+                });
+            }
+
+            // Initial render of stats with default value
+            renderSummaryStats([], []);
+        });
+    </script>
+</body>
+</html>
