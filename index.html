@@ -50,13 +50,13 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
         }
 
-        .form-control, .btn-secondary, .form-select {
+        .form-control, .btn-secondary {
             background-color: #3b4045;
             border-color: #555;
             color: var(--bs-body-color);
         }
 
-        .form-control:focus, .form-select:focus {
+        .form-control:focus {
             background-color: #3b4045;
             color: var(--bs-body-color);
             border-color: #2bfbfc;
@@ -283,26 +283,7 @@
                 
                 <div class="tab-pane fade h-100" id="trades-tab" role="tabpanel" aria-labelledby="trades-tab-btn">
                     <h5 class="card-title text-white mb-3">Closed Trade History (Matched Positions)</h5>
-                    
-                    <div class="row mb-3 g-2" id="trade-filters">
-                        <div class="col-md-4">
-                            <select class="form-select form-select-sm" id="symbolFilter">
-                                <option value="">Filter by Symbol</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <input type="date" class="form-control form-control-sm" id="openDateFilter" placeholder="Filter by Open Date">
-                        </div>
-                        <div class="col-md-4">
-                            <select class="form-select form-select-sm" id="statusFilter">
-                                <option value="">Filter by Status</option>
-                                <option value="win">Win</option>
-                                <option value="loss">Loss</option>
-                                <option value="breakeven">Break-Even</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="table-responsive" style="height: calc(100% - 70px); overflow-y: auto;">
+                    <div class="table-responsive" style="height: 100%; overflow-y: auto;">
                         <table class="table table-dark table-striped table-hover rounded-3">
                             <thead>
                                 <tr>
@@ -313,10 +294,10 @@
                                     <th scope="col" class="text-end">Open Price</th>
                                     <th scope="col" class="text-center">Status</th> 
                                     <th scope="col" class="text-end">Net Profit / Loss ($)</th>
-                                    <th scope="col" class="text-end">% Gain / Loss</th>
-                                </tr>
+                                    <th scope="col" class="text-end">% Gain / Loss</th> 
+                                    </tr>
                             </thead>
-                            <tbody id="tradesTableBody">
+                            <tbody id="tradesTableBody" style="font-size: 29px;">
 
                                 <tr>
                                     <td colspan="8" class="text-center text-muted">Upload data to view trade history.</td>
@@ -369,7 +350,6 @@
         let dailyCashFlowData = [];  
         let dailyRealizedProfitData = []; 
         let tradePairsData = [];     
-        let filteredTradePairsData = []; // ADDED: For current view
         let accountValueChart;       
         let calendarInstance;        // Store the FullCalendar instance
         let messageBoxTimeout;       
@@ -414,7 +394,14 @@
             
             return `${year}-${month}-${day}`;
         }
-
+        
+        // --- Helper Function for Symbol Cleaning (Requested by user) ---
+        
+        function cleanSymbol(rawSymbol) {
+            if (!rawSymbol) return '';
+            // Splits by space, takes the first element (e.g., 'SPXW 11/12/2025' -> 'SPXW')
+            return rawSymbol.split(/\s+/)[0].trim();
+        }
 
         // --- Summary Stats Logic ---
 
@@ -433,7 +420,7 @@
                  document.getElementById('stat-gross-loss').innerText = '$0.00';
                  document.getElementById('stat-win-rate').innerText = '0.00%';
                  document.getElementById('stat-avg-pnl').innerText = '$0.00';
-                 document.getElementById('stat-avg-daily-percent-gain').innerText = '0.00%'; // ADDED
+                 document.getElementById('stat-avg-daily-percent-gain').innerText = '0.00%'; // NEW
                  return;
             }
 
@@ -443,11 +430,11 @@
             let totalGainAmount = 0; 
             let totalLossAmount = 0; 
             let totalNetProfit = 0; 
-
+            
             // For New Stat: Average Daily % Gain
             let dailyPercentGainsSum = 0;
             let totalTradingDays = 0;
-            
+
             dailySummary.forEach(day => {
                 const profit = parseFloat(day.Profit); 
                 
@@ -459,7 +446,7 @@
                     totalLossAmount += profit; 
                 }
                 totalNetProfit += profit;
-
+                
                 // Calculate daily % gain relative to initial value (for new card)
                 if (profit !== 0) {
                     totalTradingDays++;
@@ -476,7 +463,7 @@
             const avgDailyLossPercent = initialValue > 0 ? (avgDailyLossPNL / initialValue) * 100 : 0;
             
             const avgDailyPercentGain = totalTradingDays > 0 ? (dailyPercentGainsSum / totalTradingDays) : 0; // NEW STAT CALC
-
+            
             // --- 2. Calculate Final Account Value and Total Trades ---
 
             let currentAccountValue = dailyCashFlowData.reduce((balance, day) => 
@@ -531,7 +518,7 @@
             const avgPnlElement = document.getElementById('stat-avg-pnl');
             avgPnlElement.classList.remove('text-info', 'text-danger', 'text-secondary');
             avgPnlElement.classList.add(avgPnlClass);
-
+            
             // NEW CARD: Average Daily % Gain
             const avgDailyPercentGainElement = document.getElementById('stat-avg-daily-percent-gain');
             avgDailyPercentGainElement.innerText = 
@@ -702,20 +689,20 @@ function initializeCalendar(dailySummary) {
 
         // --- Trade Table Rendering Logic ---
 
-        function renderTradesTable(tradePairsToRender) {
+        function renderTradesTable(tradePairs) {
             const tbody = document.getElementById('tradesTableBody');
             if (!tbody) return;
 
             tbody.innerHTML = ''; 
 
-            if (tradePairsToRender.length === 0) {
+            if (tradePairs.length === 0) {
                  const row = tbody.insertRow();
-                 // COLSPAN IS NOW 8
-                 row.innerHTML = `<td colspan="8" class="text-center text-muted">No closed trade pairs found matching the current filter.</td>`;
+                 // COLSPAN UPDATED FROM 5 TO 8
+                 row.innerHTML = `<td colspan="8" class="text-center text-muted">No closed trade pairs found in the uploaded data.</td>`;
                  return;
             }
 
-            tradePairsToRender.forEach(pair => {
+            tradePairs.forEach(pair => {
                 const profit = parseFloat(pair.NetProfit);
                 const openAmount = Math.abs(parseFloat(pair.OpenAmount)); // Get cost basis (absolute value)
                 
@@ -748,7 +735,7 @@ function initializeCalendar(dailySummary) {
                 const row = tbody.insertRow();
                 const profitClass = isProfit ? 'text-info' : (profit < 0 ? 'text-danger' : 'text-secondary');
                 
-                // UPDATED: Added Quantity and Open Price cells
+                // UPDATED: Added Quantity, Open Price, and % Gain columns
                 row.innerHTML = `
                     <td>${pair.Symbol}</td>
                     <td>${pair.OpenDate}</td>
@@ -761,69 +748,8 @@ function initializeCalendar(dailySummary) {
                 `;
             });
         }
-        
-        // --- Filter Logic (New) ---
 
-        /**
-         * Populates the Symbol dropdown filter with all unique symbols from the data.
-         */
-        function populateSymbolFilter(tradePairs) {
-            const symbolFilter = document.getElementById('symbolFilter');
-            symbolFilter.innerHTML = '<option value="">Filter by Symbol</option>'; // Reset
-            
-            if (tradePairs.length === 0) return;
 
-            const symbols = new Set();
-            tradePairs.forEach(pair => symbols.add(pair.Symbol));
-
-            Array.from(symbols).sort().forEach(symbol => {
-                const option = document.createElement('option');
-                option.value = symbol;
-                option.textContent = symbol;
-                symbolFilter.appendChild(option);
-            });
-        }
-        
-        /**
-         * Applies all active filters to the trade history data and re-renders the table.
-         */
-        function filterTrades() {
-            let filteredData = tradePairsData; 
-            
-            const symbol = document.getElementById('symbolFilter').value;
-            const openDate = document.getElementById('openDateFilter').value;
-            const status = document.getElementById('statusFilter').value;
-
-            // 1. Symbol Filter
-            if (symbol) {
-                filteredData = filteredData.filter(pair => pair.Symbol === symbol);
-            }
-
-            // 2. Open Date Filter
-            if (openDate) {
-                filteredData = filteredData.filter(pair => pair.OpenDate === openDate);
-            }
-
-            // 3. Status (Win/Loss/BreakEven) Filter
-            if (status) {
-                filteredData = filteredData.filter(pair => {
-                    const profit = parseFloat(pair.NetProfit);
-                    if (status === 'win') {
-                        return profit > 0;
-                    } else if (status === 'loss') {
-                        return profit < 0;
-                    } else if (status === 'breakeven') {
-                        return profit === 0;
-                    }
-                    return true;
-                });
-            }
-
-            // Update the global variable and render the table
-            filteredTradePairsData = filteredData;
-            renderTradesTable(filteredTradePairsData);
-        }
-        
         // --- Profit/Transfer Calculation Logic ---
 
         function calculateDailyProfit(data) {
@@ -861,11 +787,13 @@ function initializeCalendar(dailySummary) {
                 return 0; 
             });
             
+            // Unmatched trades keyed by CLEANED symbol
             const unmatchedBuys = {}; 
             
             trades.forEach(trade => {
                 const dateKey = formatDateToKey(trade.Date);
-                const symbol = trade.Symbol;
+                // Use cleaned symbol for matching
+                const symbol = cleanSymbol(trade.Symbol); 
                 
                 if (!unmatchedBuys[symbol]) {
                     unmatchedBuys[symbol] = [];
@@ -878,15 +806,15 @@ function initializeCalendar(dailySummary) {
                         const matchedBuy = unmatchedBuys[symbol].shift(); 
                         const netProfit = matchedBuy.Amount + trade.Amount; 
 
+                        // Store to tradePairs
                         tradePairs.push({
                             OpenDate: formatDateToKey(matchedBuy.Date),
                             CloseDate: dateKey,
-                            Symbol: symbol,
+                            Symbol: matchedBuy.Symbol, // Use original symbol for display
                             NetProfit: netProfit.toFixed(2),
-                            OpenAmount: matchedBuy.Amount.toFixed(2), 
-                            // ADDED: Quantity and Price 
-                            Quantity: matchedBuy.Quantity.toFixed(0), 
-                            OpenPrice: matchedBuy.Price.toFixed(2)    
+                            OpenAmount: matchedBuy.Amount.toFixed(2), // Cost basis
+                            Quantity: matchedBuy.Quantity.toFixed(0), // NEW FIELD
+                            OpenPrice: matchedBuy.Price.toFixed(2)    // NEW FIELD
                         });
                         
                         if (!dailyRealizedProfitMap.has(dateKey)) {
@@ -1025,23 +953,11 @@ function initializeCalendar(dailySummary) {
             const fileInput = document.getElementById('fileInput');
             const initialValueInput = document.getElementById('initial-value');
             const toggleButton = document.getElementById('toggleRightPanelButton'); 
-            
-            // --- NEW Filter Elements ---
-            const symbolFilter = document.getElementById('symbolFilter');
-            const openDateFilter = document.getElementById('openDateFilter');
-            const statusFilter = document.getElementById('statusFilter');
-
 
             // 1. Toggle Button Listener
             if (toggleButton) {
                 toggleButton.addEventListener('click', toggleRightPanelVisibility);
             }
-
-            // 1.5. NEW Filter Listeners
-            if (symbolFilter) symbolFilter.addEventListener('change', filterTrades);
-            if (openDateFilter) openDateFilter.addEventListener('change', filterTrades);
-            if (statusFilter) statusFilter.addEventListener('change', filterTrades);
-
 
             // 2. File Upload Listener (Logic unchanged, element location changed)
             if (uploadButton && fileInput) {
@@ -1078,10 +994,7 @@ function initializeCalendar(dailySummary) {
                                 initializeCalendar(dailyRealizedProfitData); 
                                 renderAccountValueChart(dailyCashFlowData);
                                 renderSummaryStats(dailyRealizedProfitData, financialData); 
-                                
-                                // UPDATED: Filter/Table logic
-                                populateSymbolFilter(tradePairsData); // Populate the filter options
-                                filterTrades();                      // Render the table with filters (initially none)
+                                renderTradesTable(tradePairsData); 
                                 
                                 showMessage(`Successfully processed ${financialData.length} records. Dashboard updated.`);
                                 
@@ -1108,9 +1021,6 @@ function initializeCalendar(dailySummary) {
 
             // Initial render of stats with default value
             renderSummaryStats([], []);
-            // Initialize filtered data array and render empty table
-            filteredTradePairsData = [];
-            renderTradesTable(filteredTradePairsData);
         });
     </script>
 </body>
