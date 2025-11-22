@@ -205,14 +205,6 @@
         </div>
 
         <div class="row g-4 mb-4">
-            <div class="col-md-12">
-                <div class="card p-3 text-center">
-                    <div class="text-secondary small">Average Daily % Gain (Normalized by Initial Capital)</div>
-                    <div class="h3 mb-0" id="stat-avg-daily-percent-gain">0.00%</div>
-                </div>
-            </div>
-        </div>
-        <div class="row g-4 mb-4">
             <div class="col-md-3">
                 <div class="card p-3 text-center">
                     <div class="text-secondary small">Total Gross Profit</div>
@@ -290,17 +282,14 @@
                                     <th scope="col">Symbol</th>
                                     <th scope="col">Open Date</th>
                                     <th scope="col">Close Date</th>
-                                    <th scope="col">Quantity</th>
-                                    <th scope="col" class="text-end">Open Price</th>
                                     <th scope="col" class="text-center">Status</th> 
                                     <th scope="col" class="text-end">Net Profit / Loss ($)</th>
-                                    <th scope="col" class="text-end">% Gain / Loss</th> 
-                                    </tr>
+                                </tr>
                             </thead>
                             <tbody id="tradesTableBody" style="font-size: 29px;">
 
                                 <tr>
-                                    <td colspan="8" class="text-center text-muted">Upload data to view trade history.</td>
+                                    <td colspan="5" class="text-center text-muted">Upload data to view trade history.</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -403,6 +392,7 @@
             return rawSymbol.split(/\s+/)[0].trim();
         }
 
+
         // --- Summary Stats Logic ---
 
         function renderSummaryStats(dailySummary, allTrades) {
@@ -420,7 +410,6 @@
                  document.getElementById('stat-gross-loss').innerText = '$0.00';
                  document.getElementById('stat-win-rate').innerText = '0.00%';
                  document.getElementById('stat-avg-pnl').innerText = '$0.00';
-                 document.getElementById('stat-avg-daily-percent-gain').innerText = '0.00%'; // NEW
                  return;
             }
 
@@ -430,10 +419,6 @@
             let totalGainAmount = 0; 
             let totalLossAmount = 0; 
             let totalNetProfit = 0; 
-            
-            // For New Stat: Average Daily % Gain
-            let dailyPercentGainsSum = 0;
-            let totalTradingDays = 0;
 
             dailySummary.forEach(day => {
                 const profit = parseFloat(day.Profit); 
@@ -446,14 +431,6 @@
                     totalLossAmount += profit; 
                 }
                 totalNetProfit += profit;
-                
-                // Calculate daily % gain relative to initial value (for new card)
-                if (profit !== 0) {
-                    totalTradingDays++;
-                    if (initialValue > 0) {
-                         dailyPercentGainsSum += (profit / initialValue) * 100;
-                    }
-                }
             });
 
             const avgDailyGainPNL = totalGainCount > 0 ? (totalGainAmount / totalGainCount) : 0;
@@ -461,8 +438,6 @@
             
             const avgDailyGainPercent = initialValue > 0 ? (avgDailyGainPNL / initialValue) * 100 : 0;
             const avgDailyLossPercent = initialValue > 0 ? (avgDailyLossPNL / initialValue) * 100 : 0;
-            
-            const avgDailyPercentGain = totalTradingDays > 0 ? (dailyPercentGainsSum / totalTradingDays) : 0; // NEW STAT CALC
             
             // --- 2. Calculate Final Account Value and Total Trades ---
 
@@ -513,18 +488,11 @@
                 `${winningDayRate.toFixed(2)}%`; 
 
             document.getElementById('stat-avg-pnl').innerText = 
-                `${avgPnlPerTrade >= 0 ? '+' : ''}$${Math.abs(avgPnlPerTrade).toFixed(2)}`;
+                `${avgPnlPerTrade >= 0 ? '+' : '-'}$${Math.abs(avgPnlPerTrade).toFixed(2)}`;
             
             const avgPnlElement = document.getElementById('stat-avg-pnl');
             avgPnlElement.classList.remove('text-info', 'text-danger', 'text-secondary');
             avgPnlElement.classList.add(avgPnlClass);
-            
-            // NEW CARD: Average Daily % Gain
-            const avgDailyPercentGainElement = document.getElementById('stat-avg-daily-percent-gain');
-            avgDailyPercentGainElement.innerText = 
-                `${avgDailyPercentGain >= 0 ? '+' : ''}${Math.abs(avgDailyPercentGain).toFixed(2)}%`;
-            avgDailyPercentGainElement.classList.remove('text-success', 'text-danger');
-            avgDailyPercentGainElement.classList.add(avgDailyPercentGain >= 0 ? 'text-success' : 'text-danger');
         }
 
 
@@ -697,21 +665,12 @@ function initializeCalendar(dailySummary) {
 
             if (tradePairs.length === 0) {
                  const row = tbody.insertRow();
-                 // COLSPAN UPDATED FROM 5 TO 8
-                 row.innerHTML = `<td colspan="8" class="text-center text-muted">No closed trade pairs found in the uploaded data.</td>`;
+                 row.innerHTML = `<td colspan="5" class="text-center text-muted">No closed trade pairs found in the uploaded data.</td>`;
                  return;
             }
 
             tradePairs.forEach(pair => {
                 const profit = parseFloat(pair.NetProfit);
-                const openAmount = Math.abs(parseFloat(pair.OpenAmount)); // Get cost basis (absolute value)
-                
-                // Calculate Percentage Gain
-                let percentGain = 0;
-                if (openAmount > 0) {
-                    percentGain = (profit / openAmount) * 100;
-                }
-                
                 const isProfit = profit > 0;
                 
                 let statusText = 'Break-Even';
@@ -729,22 +688,15 @@ function initializeCalendar(dailySummary) {
                 
                 const profitText = `${isProfit ? '+' : ''}$${Math.abs(profit).toFixed(2)}`;
                 
-                // Percentage formatting
-                const percentText = `${percentGain >= 0 ? '+' : ''}${percentGain.toFixed(2)}%`;
-                
                 const row = tbody.insertRow();
                 const profitClass = isProfit ? 'text-info' : (profit < 0 ? 'text-danger' : 'text-secondary');
                 
-                // UPDATED: Added Quantity, Open Price, and % Gain columns
                 row.innerHTML = `
                     <td>${pair.Symbol}</td>
                     <td>${pair.OpenDate}</td>
                     <td>${pair.CloseDate}</td>
-                    <td>${pair.Quantity}</td>
-                    <td class="text-end">$${parseFloat(pair.OpenPrice).toFixed(2)}</td>
                     <td class="text-center">${statusBadgeHtml}</td>
                     <td class="text-end ${profitClass}">${profitText}</td>
-                    <td class="text-end ${profitClass}">${percentText}</td>
                 `;
             });
         }
@@ -792,29 +744,26 @@ function initializeCalendar(dailySummary) {
             
             trades.forEach(trade => {
                 const dateKey = formatDateToKey(trade.Date);
-                // Use cleaned symbol for matching
-                const symbol = cleanSymbol(trade.Symbol); 
+                const rawSymbol = trade.Symbol;
+                // Use cleaned symbol for matching (e.g., SPXW 11/12/2025 -> SPXW)
+                const symbolKey = cleanSymbol(rawSymbol);
                 
-                if (!unmatchedBuys[symbol]) {
-                    unmatchedBuys[symbol] = [];
+                if (!unmatchedBuys[symbolKey]) {
+                    unmatchedBuys[symbolKey] = [];
                 }
 
                 if (trade.Action === 'Buy to Open') {
-                    unmatchedBuys[symbol].push(trade);
+                    unmatchedBuys[symbolKey].push(trade);
                 } else if (trade.Action === 'Sell to Close') {
-                    if (unmatchedBuys[symbol].length > 0) {
-                        const matchedBuy = unmatchedBuys[symbol].shift(); 
+                    if (unmatchedBuys[symbolKey].length > 0) {
+                        const matchedBuy = unmatchedBuys[symbolKey].shift(); 
                         const netProfit = matchedBuy.Amount + trade.Amount; 
 
-                        // Store to tradePairs
                         tradePairs.push({
                             OpenDate: formatDateToKey(matchedBuy.Date),
                             CloseDate: dateKey,
-                            Symbol: matchedBuy.Symbol, // Use original symbol for display
-                            NetProfit: netProfit.toFixed(2),
-                            OpenAmount: matchedBuy.Amount.toFixed(2), // Cost basis
-                            Quantity: matchedBuy.Quantity.toFixed(0), // NEW FIELD
-                            OpenPrice: matchedBuy.Price.toFixed(2)    // NEW FIELD
+                            Symbol: rawSymbol, // Store the full symbol for display
+                            NetProfit: netProfit.toFixed(2)
                         });
                         
                         if (!dailyRealizedProfitMap.has(dateKey)) {
