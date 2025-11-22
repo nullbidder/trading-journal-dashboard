@@ -241,15 +241,16 @@
 
 <div class="row g-4 mb-4">
     <div class="col-lg-6" id="chart-column">
+		    <button id="toggleRightPanelButton" class="btn btn-secondary w-100 mt-auto" type="button">
+                Hide Right Panel (Charts Only View)
+            </button>
         <div class="card p-4 h-100 d-flex flex-column">
             <h5 class="card-title text-center text-white mb-3">Account Value Over Time (Daily Cash Flow)</h5>
             <div class="chart-container flex-grow-1 mb-3">
                 <canvas id="accountValueChart"></canvas>
             </div>
             
-            <button id="toggleRightPanelButton" class="btn btn-secondary w-100 mt-auto" type="button">
-                Hide Right Panel (Charts Only View)
-            </button>
+
             </div>
     </div>
 
@@ -1084,3 +1085,4 @@ function initializeCalendar(dailySummary) {
 </body>
 
 </html>
+
