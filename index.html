@@ -791,7 +791,7 @@ function initializeCalendar(dailySummary) {
             const dailyCashMap = new Map();
             const dailyRealizedProfitMap = new Map();
             const tradePairs = [];
-            const uniqueSymbolsSet = new Set(); // NEW: Set to collect unique symbols
+            const uniqueSymbolsSet = new Set(); // Set to collect unique symbols
 
             // 1. Build the Daily Cash Flow Summary (For Account Chart)
             data.forEach(transaction => {
@@ -823,27 +823,30 @@ function initializeCalendar(dailySummary) {
                 return 0; 
             });
             
-            // Unmatched trades keyed by CLEANED symbol
+            // Unmatched trades keyed by FULL RAW symbol (e.g., 'SPXW 11/07/2025 6750.00 C')
+            // This is the fix to prevent mixing up trades with the same base symbol (like SPXW)
             const unmatchedBuys = {}; 
             
             trades.forEach(trade => {
                 const dateKey = formatDateToKey(trade.Date);
                 const rawSymbol = trade.Symbol;
-                // Use cleaned symbol for matching (e.g., SPXW 11/12/2025 -> SPXW)
-                const symbolKey = cleanSymbol(rawSymbol);
-
-                // Populate unique symbols set
-                uniqueSymbolsSet.add(symbolKey);
                 
-                if (!unmatchedBuys[symbolKey]) {
-                    unmatchedBuys[symbolKey] = [];
+                // For the Symbol Filter Dropdown (Cleaned Symbol)
+                const cleanSymbolKey = cleanSymbol(rawSymbol);
+                uniqueSymbolsSet.add(cleanSymbolKey);
+
+                // Use the full raw symbol for matching the specific contract
+                const tradeMatchKey = rawSymbol; 
+
+                if (!unmatchedBuys[tradeMatchKey]) {
+                    unmatchedBuys[tradeMatchKey] = [];
                 }
 
                 if (trade.Action === 'Buy to Open') {
-                    unmatchedBuys[symbolKey].push(trade);
+                    unmatchedBuys[tradeMatchKey].push(trade);
                 } else if (trade.Action === 'Sell to Close') {
-                    if (unmatchedBuys[symbolKey].length > 0) {
-                        const matchedBuy = unmatchedBuys[symbolKey].shift(); 
+                    if (unmatchedBuys[tradeMatchKey].length > 0) {
+                        const matchedBuy = unmatchedBuys[tradeMatchKey].shift(); 
                         const netProfit = matchedBuy.Amount + trade.Amount; 
 
                         tradePairs.push({
