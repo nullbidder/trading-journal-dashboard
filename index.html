@@ -50,13 +50,13 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
         }
 
-        .form-control, .btn-secondary {
+        .form-control, .btn-secondary, .form-select {
             background-color: #3b4045;
             border-color: #555;
             color: var(--bs-body-color);
         }
 
-        .form-control:focus {
+        .form-control:focus, .form-select:focus {
             background-color: #3b4045;
             color: var(--bs-body-color);
             border-color: #2bfbfc;
@@ -677,7 +677,7 @@ function initializeCalendar(dailySummary) {
 
             if (tradePairsToRender.length === 0) {
                  const row = tbody.insertRow();
-                 row.innerHTML = `<td colspan="5" class="text-center text-muted">No closed trade pairs found matching the filter.</td>`;
+                 row.innerHTML = `<td colspan="5" class="text-center text-muted">No closed trade pairs found matching the current filter.</td>`;
                  return;
             }
 
@@ -713,7 +713,7 @@ function initializeCalendar(dailySummary) {
             });
         }
         
-        // --- Filter Logic ---
+        // --- Filter Logic (New) ---
 
         /**
          * Populates the Symbol dropdown filter with all unique symbols from the data.
@@ -774,8 +774,7 @@ function initializeCalendar(dailySummary) {
             filteredTradePairsData = filteredData;
             renderTradesTable(filteredTradePairsData);
         }
-
-
+        
         // --- Profit/Transfer Calculation Logic ---
 
         function calculateDailyProfit(data) {
@@ -1056,7 +1055,7 @@ function initializeCalendar(dailySummary) {
 
             // Initial render of stats with default value
             renderSummaryStats([], []);
-            // Initialize filtered data array and table for first load
+            // Initialize filtered data array and render empty table
             filteredTradePairsData = [];
             renderTradesTable(filteredTradePairsData);
         });
