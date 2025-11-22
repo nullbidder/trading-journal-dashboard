@@ -205,6 +205,14 @@
         </div>
 
         <div class="row g-4 mb-4">
+            <div class="col-md-12">
+                <div class="card p-3 text-center">
+                    <div class="text-secondary small">Average Daily % Gain (Normalized by Initial Capital)</div>
+                    <div class="h3 mb-0" id="stat-avg-daily-percent-gain">0.00%</div>
+                </div>
+            </div>
+        </div>
+        <div class="row g-4 mb-4">
             <div class="col-md-3">
                 <div class="card p-3 text-center">
                     <div class="text-secondary small">Total Gross Profit</div>
@@ -301,6 +309,8 @@
                                     <th scope="col">Symbol</th>
                                     <th scope="col">Open Date</th>
                                     <th scope="col">Close Date</th>
+                                    <th scope="col">Quantity</th>
+                                    <th scope="col" class="text-end">Open Price</th>
                                     <th scope="col" class="text-center">Status</th> 
                                     <th scope="col" class="text-end">Net Profit / Loss ($)</th>
                                     <th scope="col" class="text-end">% Gain / Loss</th>
@@ -309,7 +319,7 @@
                             <tbody id="tradesTableBody">
 
                                 <tr>
-                                    <td colspan="6" class="text-center text-muted">Upload data to view trade history.</td>
+                                    <td colspan="8" class="text-center text-muted">Upload data to view trade history.</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -423,6 +433,7 @@
                  document.getElementById('stat-gross-loss').innerText = '$0.00';
                  document.getElementById('stat-win-rate').innerText = '0.00%';
                  document.getElementById('stat-avg-pnl').innerText = '$0.00';
+                 document.getElementById('stat-avg-daily-percent-gain').innerText = '0.00%'; // ADDED
                  return;
             }
 
@@ -433,6 +444,10 @@
             let totalLossAmount = 0; 
             let totalNetProfit = 0; 
 
+            // For New Stat: Average Daily % Gain
+            let dailyPercentGainsSum = 0;
+            let totalTradingDays = 0;
+            
             dailySummary.forEach(day => {
                 const profit = parseFloat(day.Profit); 
                 
@@ -444,6 +459,14 @@
                     totalLossAmount += profit; 
                 }
                 totalNetProfit += profit;
+
+                // Calculate daily % gain relative to initial value (for new card)
+                if (profit !== 0) {
+                    totalTradingDays++;
+                    if (initialValue > 0) {
+                         dailyPercentGainsSum += (profit / initialValue) * 100;
+                    }
+                }
             });
 
             const avgDailyGainPNL = totalGainCount > 0 ? (totalGainAmount / totalGainCount) : 0;
@@ -452,6 +475,8 @@
             const avgDailyGainPercent = initialValue > 0 ? (avgDailyGainPNL / initialValue) * 100 : 0;
             const avgDailyLossPercent = initialValue > 0 ? (avgDailyLossPNL / initialValue) * 100 : 0;
             
+            const avgDailyPercentGain = totalTradingDays > 0 ? (dailyPercentGainsSum / totalTradingDays) : 0; // NEW STAT CALC
+
             // --- 2. Calculate Final Account Value and Total Trades ---
 
             let currentAccountValue = dailyCashFlowData.reduce((balance, day) => 
@@ -506,6 +531,13 @@
             const avgPnlElement = document.getElementById('stat-avg-pnl');
             avgPnlElement.classList.remove('text-info', 'text-danger', 'text-secondary');
             avgPnlElement.classList.add(avgPnlClass);
+
+            // NEW CARD: Average Daily % Gain
+            const avgDailyPercentGainElement = document.getElementById('stat-avg-daily-percent-gain');
+            avgDailyPercentGainElement.innerText = 
+                `${avgDailyPercentGain >= 0 ? '+' : ''}${Math.abs(avgDailyPercentGain).toFixed(2)}%`;
+            avgDailyPercentGainElement.classList.remove('text-success', 'text-danger');
+            avgDailyPercentGainElement.classList.add(avgDailyPercentGain >= 0 ? 'text-success' : 'text-danger');
         }
 
 
@@ -678,8 +710,8 @@ function initializeCalendar(dailySummary) {
 
             if (tradePairsToRender.length === 0) {
                  const row = tbody.insertRow();
-                 // COLSPAN IS NOW 6
-                 row.innerHTML = `<td colspan="6" class="text-center text-muted">No closed trade pairs found matching the current filter.</td>`;
+                 // COLSPAN IS NOW 8
+                 row.innerHTML = `<td colspan="8" class="text-center text-muted">No closed trade pairs found matching the current filter.</td>`;
                  return;
             }
 
@@ -716,10 +748,13 @@ function initializeCalendar(dailySummary) {
                 const row = tbody.insertRow();
                 const profitClass = isProfit ? 'text-info' : (profit < 0 ? 'text-danger' : 'text-secondary');
                 
+                // UPDATED: Added Quantity and Open Price cells
                 row.innerHTML = `
                     <td>${pair.Symbol}</td>
                     <td>${pair.OpenDate}</td>
                     <td>${pair.CloseDate}</td>
+                    <td>${pair.Quantity}</td>
+                    <td class="text-end">$${parseFloat(pair.OpenPrice).toFixed(2)}</td>
                     <td class="text-center">${statusBadgeHtml}</td>
                     <td class="text-end ${profitClass}">${profitText}</td>
                     <td class="text-end ${profitClass}">${percentText}</td>
@@ -848,7 +883,10 @@ function initializeCalendar(dailySummary) {
                             CloseDate: dateKey,
                             Symbol: symbol,
                             NetProfit: netProfit.toFixed(2),
-                            OpenAmount: matchedBuy.Amount.toFixed(2) // ADDED: Cost basis (as negative value from BTO)
+                            OpenAmount: matchedBuy.Amount.toFixed(2), 
+                            // ADDED: Quantity and Price 
+                            Quantity: matchedBuy.Quantity.toFixed(0), 
+                            OpenPrice: matchedBuy.Price.toFixed(2)    
                         });
                         
                         if (!dailyRealizedProfitMap.has(dateKey)) {
