@@ -303,12 +303,13 @@
                                     <th scope="col">Close Date</th>
                                     <th scope="col" class="text-center">Status</th> 
                                     <th scope="col" class="text-end">Net Profit / Loss ($)</th>
+                                    <th scope="col" class="text-end">% Gain / Loss</th>
                                 </tr>
                             </thead>
                             <tbody id="tradesTableBody">
 
                                 <tr>
-                                    <td colspan="5" class="text-center text-muted">Upload data to view trade history.</td>
+                                    <td colspan="6" class="text-center text-muted">Upload data to view trade history.</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -677,12 +678,21 @@ function initializeCalendar(dailySummary) {
 
             if (tradePairsToRender.length === 0) {
                  const row = tbody.insertRow();
-                 row.innerHTML = `<td colspan="5" class="text-center text-muted">No closed trade pairs found matching the current filter.</td>`;
+                 // COLSPAN IS NOW 6
+                 row.innerHTML = `<td colspan="6" class="text-center text-muted">No closed trade pairs found matching the current filter.</td>`;
                  return;
             }
 
             tradePairsToRender.forEach(pair => {
                 const profit = parseFloat(pair.NetProfit);
+                const openAmount = Math.abs(parseFloat(pair.OpenAmount)); // Get cost basis (absolute value)
+                
+                // Calculate Percentage Gain
+                let percentGain = 0;
+                if (openAmount > 0) {
+                    percentGain = (profit / openAmount) * 100;
+                }
+                
                 const isProfit = profit > 0;
                 
                 let statusText = 'Break-Even';
@@ -700,6 +710,9 @@ function initializeCalendar(dailySummary) {
                 
                 const profitText = `${isProfit ? '+' : ''}$${Math.abs(profit).toFixed(2)}`;
                 
+                // Percentage formatting
+                const percentText = `${percentGain >= 0 ? '+' : ''}${percentGain.toFixed(2)}%`;
+                
                 const row = tbody.insertRow();
                 const profitClass = isProfit ? 'text-info' : (profit < 0 ? 'text-danger' : 'text-secondary');
                 
@@ -709,6 +722,7 @@ function initializeCalendar(dailySummary) {
                     <td>${pair.CloseDate}</td>
                     <td class="text-center">${statusBadgeHtml}</td>
                     <td class="text-end ${profitClass}">${profitText}</td>
+                    <td class="text-end ${profitClass}">${percentText}</td>
                 `;
             });
         }
@@ -833,7 +847,8 @@ function initializeCalendar(dailySummary) {
                             OpenDate: formatDateToKey(matchedBuy.Date),
                             CloseDate: dateKey,
                             Symbol: symbol,
-                            NetProfit: netProfit.toFixed(2)
+                            NetProfit: netProfit.toFixed(2),
+                            OpenAmount: matchedBuy.Amount.toFixed(2) // ADDED: Cost basis (as negative value from BTO)
                         });
                         
                         if (!dailyRealizedProfitMap.has(dateKey)) {
