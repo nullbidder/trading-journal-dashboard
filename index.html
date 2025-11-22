@@ -231,22 +231,24 @@
             </div>
         </div>
 
-        <div class="row g-4 mb-4">
-            <div class="col-lg-6" id="chart-column">
-                <div class="card p-4 h-100">
-                    <h5 class="card-title text-center text-white mb-3">Account Value Over Time (Daily Cash Flow)</h5>
-                    <div class="chart-container">
-                        <canvas id="accountValueChart"></canvas>
-                    </div>
-                </div>
+<div class="row g-4 mb-4">
+    <div class="col-lg-6" id="chart-column">
+        <div class="card p-4 h-100 d-flex flex-column">
+            <h5 class="card-title text-center text-white mb-3">Account Value Over Time (Daily Cash Flow)</h5>
+            <div class="chart-container flex-grow-1 mb-3">
+                <canvas id="accountValueChart"></canvas>
             </div>
+            
+            <button id="toggleRightPanelButton" class="btn btn-secondary w-100 mt-auto" type="button">
+                Hide Right Panel (Charts Only View)
+            </button>
+            </div>
+    </div>
 
-            <div class="col-lg-6" id="right-panel-tabs">
-                <div class="card p-4 h-100 d-flex flex-column">
-                    
-                    <button id="toggleRightPanelButton" class="btn btn-secondary mb-3 w-100" type="button">
-                        Hide Right Panel (Charts Only View)
-                    </button>
+<div class="col-lg-6" id="right-panel-tabs">
+        <div class="card p-4 h-100 d-flex flex-column">
+            
+            <ul class="nav nav-tabs nav-justified mb-3" id="mainTabs" role="tablist">
 
                     <ul class="nav nav-tabs nav-justified mb-3" id="mainTabs" role="tablist">
                         <li class="nav-item" role="presentation">
@@ -287,7 +289,7 @@
                                         </tr>
                                     </thead>
                                     <tbody id="tradesTableBody" style="font-size: 29px;">
->
+
                                         <tr>
                                             <td colspan="5" class="text-center text-muted">Upload data to view trade history.</td>
                                         </tr>
@@ -965,5 +967,6 @@ function initializeCalendar(dailySummary) {
 </body>
 
 </html>
+
 
 
