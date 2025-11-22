@@ -50,13 +50,13 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
         }
 
-        .form-control, .btn-secondary {
+        .form-control, .btn-secondary, .form-select {
             background-color: #3b4045;
             border-color: #555;
             color: var(--bs-body-color);
         }
 
-        .form-control:focus {
+        .form-control:focus, .form-select:focus {
             background-color: #3b4045;
             color: var(--bs-body-color);
             border-color: #2bfbfc;
@@ -286,7 +286,9 @@
                     
                     <div class="mb-3">
                         <label for="symbolFilterInput" class="form-label text-secondary small">Filter by Symbol:</label>
-                        <input type="text" class="form-control" id="symbolFilterInput" placeholder="e.g., SPXW, AAPL">
+                        <select class="form-select" id="symbolFilterInput">
+                            <option value="">All Symbols</option>
+                            </select>
                     </div>
                     <div class="table-responsive" style="height: calc(100% - 130px); overflow-y: auto;">
                         <table class="table table-dark table-striped table-hover rounded-3">
@@ -300,7 +302,7 @@
                                     <th scope="col" class="text-center">Status</th> 
                                     <th scope="col" class="text-end">Net Profit / Loss ($)</th>
                                     <th scope="col" class="text-end">% Gain / Loss</th> 
-                                    </tr>
+                                </tr>
                             </thead>
                             <tbody id="tradesTableBody" style="font-size: 29px;">
 
@@ -355,6 +357,7 @@
         let dailyCashFlowData = [];  
         let dailyRealizedProfitData = []; 
         let tradePairsData = [];     
+        let uniqueTradeSymbols = []; // NEW: To store unique symbols for the filter
         let accountValueChart;       
         let calendarInstance;        // Store the FullCalendar instance
         let messageBoxTimeout;       
@@ -405,7 +408,7 @@
         function cleanSymbol(rawSymbol) {
             if (!rawSymbol) return '';
             // Splits by space, takes the first element (e.g., 'SPXW 11/12/2025' -> 'SPXW')
-            return rawSymbol.split(/\s+/)[0].trim();
+            return rawSymbol.split(/\s+/)[0].trim().toUpperCase();
         }
 
         // --- Summary Stats Logic ---
@@ -425,7 +428,7 @@
                  document.getElementById('stat-gross-loss').innerText = '$0.00';
                  document.getElementById('stat-win-rate').innerText = '0.00%';
                  document.getElementById('stat-avg-pnl').innerText = '$0.00';
-                 document.getElementById('stat-avg-daily-percent-gain').innerText = '0.00%'; // REINSTATED
+                 document.getElementById('stat-avg-daily-percent-gain').innerText = '0.00%'; 
                  return;
             }
 
@@ -436,7 +439,6 @@
             let totalLossAmount = 0; 
             let totalNetProfit = 0; 
             
-            // For New Stat: Average Daily % Gain (REINSTATED)
             let dailyPercentGainsSum = 0;
             let totalTradingDays = 0;
 
@@ -452,7 +454,6 @@
                 }
                 totalNetProfit += profit;
                 
-                // Calculate daily % gain relative to initial value (for new card) (REINSTATED)
                 if (profit !== 0) {
                     totalTradingDays++;
                     if (initialValue > 0) {
@@ -467,7 +468,7 @@
             const avgDailyGainPercent = initialValue > 0 ? (avgDailyGainPNL / initialValue) * 100 : 0;
             const avgDailyLossPercent = initialValue > 0 ? (avgDailyLossPNL / initialValue) * 100 : 0;
             
-            const avgDailyPercentGain = totalTradingDays > 0 ? (dailyPercentGainsSum / totalTradingDays) : 0; // REINSTATED STAT CALC
+            const avgDailyPercentGain = totalTradingDays > 0 ? (dailyPercentGainsSum / totalTradingDays) : 0; 
             
             // --- 2. Calculate Final Account Value and Total Trades ---
 
@@ -524,7 +525,6 @@
             avgPnlElement.classList.remove('text-info', 'text-danger', 'text-secondary');
             avgPnlElement.classList.add(avgPnlClass);
             
-            // REINSTATED CARD: Average Daily % Gain
             const avgDailyPercentGainElement = document.getElementById('stat-avg-daily-percent-gain');
             avgDailyPercentGainElement.innerText = 
                 `${avgDailyPercentGain >= 0 ? '+' : ''}${Math.abs(avgDailyPercentGain).toFixed(2)}%`;
@@ -604,8 +604,7 @@
 
 
         // --- Calendar Rendering Logic ---
-// --- Calendar Rendering Logic ---
-
+        
 function initializeCalendar(dailySummary) {
     if (typeof FullCalendar === 'undefined') {
         console.warn("FullCalendar library is not loaded. Cannot initialize calendar.");
@@ -692,6 +691,25 @@ function initializeCalendar(dailySummary) {
         }
 
 
+        // --- Symbol Filter Population Logic (NEW) ---
+
+        function populateSymbolFilter(symbols) {
+            const selectElement = document.getElementById('symbolFilterInput');
+            if (!selectElement) return;
+
+            // Clear existing options and add the default "All Symbols" option
+            selectElement.innerHTML = '<option value="">All Symbols</option>';
+
+            symbols.forEach(symbol => {
+                const option = document.createElement('option');
+                option.value = symbol;
+                option.textContent = symbol;
+                selectElement.appendChild(option);
+            });
+            // Ensure the dropdown is reset to "All Symbols" when re-populated
+            selectElement.value = ""; 
+        }
+
         // --- Trade Table Rendering Logic ---
 
         function renderTradesTable(tradePairs, filterText = '') {
@@ -704,12 +722,13 @@ function initializeCalendar(dailySummary) {
             const normalizedFilter = cleanSymbol(filterText).toUpperCase();
             
             const filteredPairs = tradePairs.filter(pair => {
-                if (!normalizedFilter) return true; // Show all if filter is empty
+                if (!normalizedFilter) return true; // Show all if filter is empty (i.e., 'All Symbols' is selected)
                 
                 // Use the cleanSymbol function on the trade's symbol for comparison
                 const cleanedPairSymbol = cleanSymbol(pair.Symbol).toUpperCase();
                 
-                return cleanedPairSymbol.includes(normalizedFilter);
+                // Now checks for exact match, as symbols from the dropdown are exact
+                return cleanedPairSymbol === normalizedFilter; 
             });
 
             if (filteredPairs.length === 0) {
@@ -744,7 +763,7 @@ function initializeCalendar(dailySummary) {
 
                 const statusBadgeHtml = `<span class="badge ${statusBgClass} rounded px-3 py-1">${statusText}</span>`;
                 
-                const profitText = `${isProfit ? '+' : ''}$${Math.abs(profit).toFixed(2)}`;
+                const profitText = `${profit >= 0 ? '+' : ''}$${Math.abs(profit).toFixed(2)}`;
                 
                 // Percentage formatting
                 const percentText = `${percentGain >= 0 ? '+' : ''}${percentGain.toFixed(2)}%`;
@@ -752,7 +771,6 @@ function initializeCalendar(dailySummary) {
                 const row = tbody.insertRow();
                 const profitClass = isProfit ? 'text-info' : (profit < 0 ? 'text-danger' : 'text-secondary');
                 
-                // REINSTATED COLUMNS
                 row.innerHTML = `
                     <td>${pair.Symbol}</td>
                     <td>${pair.OpenDate}</td>
@@ -773,6 +791,7 @@ function initializeCalendar(dailySummary) {
             const dailyCashMap = new Map();
             const dailyRealizedProfitMap = new Map();
             const tradePairs = [];
+            const uniqueSymbolsSet = new Set(); // NEW: Set to collect unique symbols
 
             // 1. Build the Daily Cash Flow Summary (For Account Chart)
             data.forEach(transaction => {
@@ -812,6 +831,9 @@ function initializeCalendar(dailySummary) {
                 const rawSymbol = trade.Symbol;
                 // Use cleaned symbol for matching (e.g., SPXW 11/12/2025 -> SPXW)
                 const symbolKey = cleanSymbol(rawSymbol);
+
+                // Populate unique symbols set
+                uniqueSymbolsSet.add(symbolKey);
                 
                 if (!unmatchedBuys[symbolKey]) {
                     unmatchedBuys[symbolKey] = [];
@@ -824,7 +846,6 @@ function initializeCalendar(dailySummary) {
                         const matchedBuy = unmatchedBuys[symbolKey].shift(); 
                         const netProfit = matchedBuy.Amount + trade.Amount; 
 
-                        // Reinstated: Quantity, Open Price, and OpenAmount fields
                         tradePairs.push({
                             OpenDate: formatDateToKey(matchedBuy.Date),
                             CloseDate: dateKey,
@@ -857,11 +878,14 @@ function initializeCalendar(dailySummary) {
             const dateSorter = (a, b) => new Date(a.Date) - new Date(b.Date);
             cashFlowSummary.sort(dateSorter);
             realizedProfitSummary.sort(dateSorter);
+            
+            const uniqueSymbolsArray = Array.from(uniqueSymbolsSet).sort(); // Sort symbols alphabetically
 
             return {
                 tradePairs: tradePairs,
                 dailyCashFlowSummary: cashFlowSummary,        
-                dailyRealizedProfitSummary: realizedProfitSummary
+                dailyRealizedProfitSummary: realizedProfitSummary,
+                uniqueSymbols: uniqueSymbolsArray // NEW: Return unique symbols
             };
         }
 
@@ -966,7 +990,6 @@ function initializeCalendar(dailySummary) {
         // --- DOM and Event Handling ---
 
         document.addEventListener('DOMContentLoaded', () => {
-            // These elements are now in the Settings tab, but their IDs are the same
             const uploadButton = document.getElementById('uploadDataButton');
             const fileInput = document.getElementById('fileInput');
             const initialValueInput = document.getElementById('initial-value');
@@ -978,7 +1001,7 @@ function initializeCalendar(dailySummary) {
                 toggleButton.addEventListener('click', toggleRightPanelVisibility);
             }
 
-            // 2. File Upload Listener (Logic unchanged, element location changed)
+            // 2. File Upload Listener (Logic modified to handle unique symbols)
             if (uploadButton && fileInput) {
                 uploadButton.addEventListener('click', () => {
                     fileInput.click();
@@ -1003,17 +1026,20 @@ function initializeCalendar(dailySummary) {
                             if (parsedData.length > 0) {
                                 financialData = parsedData; 
                                 
-                                const { tradePairs, dailyCashFlowSummary, dailyRealizedProfitSummary } = calculateDailyProfit(financialData);
+                                const { tradePairs, dailyCashFlowSummary, dailyRealizedProfitSummary, uniqueSymbols } = calculateDailyProfit(financialData);
                                 
                                 dailyCashFlowData = dailyCashFlowSummary; 
                                 dailyRealizedProfitData = dailyRealizedProfitSummary;
                                 tradePairsData = tradePairs; 
+                                uniqueTradeSymbols = uniqueSymbols; // Store unique symbols globally
                                 
                                 // RENDER ALL CONTENT
                                 initializeCalendar(dailyRealizedProfitData); 
                                 renderAccountValueChart(dailyCashFlowData);
                                 renderSummaryStats(dailyRealizedProfitData, financialData); 
-                                // Pass current filter value on data load
+                                
+                                // NEW: Populate the filter dropdown and render the table
+                                populateSymbolFilter(uniqueTradeSymbols);
                                 renderTradesTable(tradePairsData, symbolFilterInput ? symbolFilterInput.value : ''); 
                                 
                                 showMessage(`Successfully processed ${financialData.length} records. Dashboard updated.`);
@@ -1028,7 +1054,7 @@ function initializeCalendar(dailySummary) {
                 });
             }
 
-            // 3. Initial Value Change Listener (Logic unchanged, element location changed)
+            // 3. Initial Value Change Listener (Logic unchanged)
             if (initialValueInput) {
                 initialValueInput.addEventListener('change', () => {
                     renderSummaryStats(dailyRealizedProfitData, financialData); 
@@ -1039,9 +1065,10 @@ function initializeCalendar(dailySummary) {
                 });
             }
 
-            // 4. Symbol Filter Listener (NEW)
+            // 4. Symbol Filter Listener (MODIFIED: changed from 'input' to 'change')
             if (symbolFilterInput) {
-                symbolFilterInput.addEventListener('input', () => {
+                symbolFilterInput.addEventListener('change', () => {
+                    // Filter logic is now an exact match of the selected option value
                     renderTradesTable(tradePairsData, symbolFilterInput.value); 
                 });
             }
