@@ -253,7 +253,8 @@
                 </div>
             </div>
         </div>
-        <div class="row g-4 mb-4">
+						 
+<div class="row g-4 mb-4">
     <div class="col-lg-6" id="chart-column">
 		    <button id="toggleRightPanelButton" class="btn btn-secondary w-100 mt-auto" type="button">
                 Hide Right Panel (Charts Only View)
@@ -377,9 +378,12 @@
         let calendarInstance;        // Store the FullCalendar instance
         let messageBoxTimeout;       
 
+
         // NEW: Global variables for non-trade cash flow totals
         let totalWireReceivedAmount = 0;
-        let totalWireSentAmount = 0;
+        let totalWireSentAmount = 0;															   
+										
+									
 
         // --- Chart Color Constants ---
         const CHART_PROFIT_COLOR_HEX = '#343535'; 
@@ -438,8 +442,9 @@
             
             // NEW: Get card elements (safely)
             const wireReceivedEl = document.getElementById('stat-wire-received');
-            const wireSentEl = document.getElementById('stat-wire-sent');
-            
+            const wireSentEl = document.getElementById('stat-wire-sent');																				 
+									 
+			
             if (dailySummary.length === 0 && allTrades.length === 0) {
                  document.getElementById('stat-current-value').innerText = `$${initialValue.toFixed(2)}`;
                  document.getElementById('stat-total-trades').innerText = '0';
@@ -452,10 +457,12 @@
                  document.getElementById('stat-win-rate').innerText = '0.00%';
                  document.getElementById('stat-avg-pnl').innerText = '$0.00';
                  document.getElementById('stat-avg-daily-percent-gain').innerText = '0.00%'; 
-                 
-                 // NEW: Initialize new stats
+				 
+	                 // NEW: Initialize new stats
                  if (wireReceivedEl) wireReceivedEl.innerText = '$0.00';
-                 if (wireSentEl) wireSentEl.innerText = '$0.00';
+                 if (wireSentEl) wireSentEl.innerText = '$0.00';										 
+									
+																
 
                  return;
             }
@@ -508,7 +515,7 @@
                 d.Action === 'Buy to Open' || d.Action === 'Sell to Close'
             ).length;
             
-            const totalClosedPositions = totalTradeTransactions / 2;
+            const totalClosedPositions = allTrades.length > 0 ? (tradePairsData.length) : 0;
 
             const totalDays = totalGainCount + totalLossCount;
             const winningDayRate = totalDays > 0 ? (totalGainCount / totalDays) * 100 : 0;
@@ -558,7 +565,7 @@
                 `${avgDailyPercentGain >= 0 ? '+' : ''}${Math.abs(avgDailyPercentGain).toFixed(2)}%`;
             avgDailyPercentGainElement.classList.remove('text-success', 'text-danger');
             avgDailyPercentGainElement.classList.add(avgDailyPercentGain >= 0 ? 'text-success' : 'text-danger');
-            
+			
             // NEW: Update wire transfer stats
             if (wireReceivedEl) {
                 wireReceivedEl.innerText = 
@@ -830,7 +837,7 @@ function initializeCalendar(dailySummary) {
             const dailyRealizedProfitMap = new Map();
             const tradePairs = [];
             const uniqueSymbolsSet = new Set(); // Set to collect unique symbols
-            
+			
             // NEW: Reset global wire totals
             totalWireReceivedAmount = 0; 
             totalWireSentAmount = 0;
@@ -846,6 +853,7 @@ function initializeCalendar(dailySummary) {
                 } else if (transaction.Action === 'Wire Sent') {
                     totalWireSentAmount += amount; // Amount is negative, so we add it.
                 }
+				 
 
                 if (!dailyCashMap.has(dateKey)) {
                     dailyCashMap.set(dateKey, 0);
@@ -858,6 +866,7 @@ function initializeCalendar(dailySummary) {
                 (d.Action === 'Buy to Open' || d.Action === 'Sell to Close') && d.Symbol
             );
 
+            // Sort by date/time, then BTO before STC
             trades.sort((a, b) => {
                 const dateDiff = a.Date.getTime() - b.Date.getTime();
                 if (dateDiff !== 0) {
@@ -873,7 +882,7 @@ function initializeCalendar(dailySummary) {
             });
             
             // Unmatched trades keyed by FULL RAW symbol (e.g., 'SPXW 11/07/2025 6750.00 C')
-            // This is the fix to prevent mixing up trades with the same base symbol (like SPXW)
+																								
             const unmatchedBuys = {}; 
             
             trades.forEach(trade => {
@@ -894,24 +903,84 @@ function initializeCalendar(dailySummary) {
                 if (trade.Action === 'Buy to Open') {
                     unmatchedBuys[tradeMatchKey].push(trade);
                 } else if (trade.Action === 'Sell to Close') {
-                    if (unmatchedBuys[tradeMatchKey].length > 0) {
-                        const matchedBuy = unmatchedBuys[tradeMatchKey].shift(); 
-                        const netProfit = matchedBuy.Amount + trade.Amount; 
-
-                        tradePairs.push({
-                            OpenDate: formatDateToKey(matchedBuy.Date),
-                            CloseDate: dateKey,
-                            Symbol: rawSymbol, // Store the full symbol for display
-                            NetProfit: netProfit.toFixed(2),
-                            OpenAmount: matchedBuy.Amount.toFixed(2), // Cost basis
-                            Quantity: matchedBuy.Quantity.toFixed(0), 
-                            OpenPrice: matchedBuy.Price.toFixed(2)    
-                        });
+																  
+                    const allBuysToMatch = unmatchedBuys[tradeMatchKey];
+                    
+                    if (allBuysToMatch && allBuysToMatch.length > 0) {
+										 
+									
+											   
+																				   
+															
+																				   
+								   
+								   
+						   
                         
-                        if (!dailyRealizedProfitMap.has(dateKey)) {
-                            dailyRealizedProfitMap.set(dateKey, 0);
+                        const totalBTOQuantity = allBuysToMatch.reduce((sum, buy) => sum + buy.Quantity, 0);
+                        
+                        // Check if the STC transaction closes the entire accumulated BTO position
+                        if (totalBTOQuantity === trade.Quantity) {
+                            
+                            // 1. Combine metrics for the position's entry
+                            const totalBTOAmount = allBuysToMatch.reduce((sum, buy) => sum + buy.Amount, 0); 
+                            const oldestOpenDate = allBuysToMatch[0].Date; // FIFO: use the oldest open date
+                            
+                            // Calculate weighted average open price
+                            let totalBTOValue = 0;
+                            allBuysToMatch.forEach(buy => {
+                                // Amount includes fees, so use Quantity * Price to get true contract value
+                                totalBTOValue += (buy.Quantity * buy.Price); 
+                            });
+                            const combinedOpenPrice = totalBTOQuantity > 0 ? (totalBTOValue / totalBTOQuantity) : 0;
+
+                            // 2. Calculate the total net profit/loss for the entire closed position
+                            const netProfit = totalBTOAmount + trade.Amount; 
+
+                            tradePairs.push({
+                                OpenDate: formatDateToKey(oldestOpenDate),
+                                CloseDate: dateKey,
+                                Symbol: rawSymbol, 
+                                NetProfit: netProfit.toFixed(2),
+                                OpenAmount: totalBTOAmount.toFixed(2), 
+                                Quantity: trade.Quantity.toFixed(0), // Total closed quantity (3 in your example)
+                                OpenPrice: combinedOpenPrice.toFixed(2) // Weighted average open price
+                            });
+                            
+                            // 3. Add to daily realized profit on close date
+                            if (!dailyRealizedProfitMap.has(dateKey)) {
+                                dailyRealizedProfitMap.set(dateKey, 0);
+                            }
+                            dailyRealizedProfitMap.set(dateKey, dailyRealizedProfitMap.get(dateKey) + netProfit);
+
+                            // 4. Clear the matched BTOs (the entire position is closed)
+                            unmatchedBuys[tradeMatchKey] = [];
+                        } else {
+                            // If BTO quantity does not match STC quantity, 
+                            // this logic assumes partial closes are handled by separate rows 
+                            // or that the data is structured to match the quantities exactly for the pair.
+                            // Falling back to simple FIFO for the one-to-one match (original logic for single trades)
+                            if (allBuysToMatch.length > 0) {
+                                const matchedBuy = allBuysToMatch.shift(); 
+                                const netProfit = matchedBuy.Amount + trade.Amount; 
+
+                                tradePairs.push({
+                                    OpenDate: formatDateToKey(matchedBuy.Date),
+                                    CloseDate: dateKey,
+                                    Symbol: rawSymbol, // Store the full symbol for display
+                                    NetProfit: netProfit.toFixed(2),
+                                    OpenAmount: matchedBuy.Amount.toFixed(2), // Cost basis
+                                    Quantity: matchedBuy.Quantity.toFixed(0), 
+                                    OpenPrice: matchedBuy.Price.toFixed(2)    
+                                });
+                                
+                                if (!dailyRealizedProfitMap.has(dateKey)) {
+                                    dailyRealizedProfitMap.set(dateKey, 0);
+                                }
+                                dailyRealizedProfitMap.set(dateKey, dailyRealizedProfitMap.get(dateKey) + netProfit);
+                            }
                         }
-                        dailyRealizedProfitMap.set(dateKey, dailyRealizedProfitMap.get(dateKey) + netProfit);
+																											 
                     }
                 }
             });
