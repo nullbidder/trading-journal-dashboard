@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/6.1.11/main.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
     
-    <style>
+<style>
         /* Custom Dark Theme Styles */
         :root {
             --bs-body-bg: #212529; /* Dark background */
@@ -31,63 +31,7 @@
             padding: 20px;
         }
 
-		.text-bg-info {
-			color: #000 !important;
-			background-color: rgb(143 198 200) !important;
-		}
-
-		.text-bg-danger {
-			color: #fff !important;
-			background-color: rgb(139 38 38) !important;   
-		}
-			
-        /* Apply dark theme to standard Bootstrap components */
-        .card {
-            background-color: var(--bs-card-bg);
-            border-color: var(--bs-border-color);
-            color: var(--bs-body-color);
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-        }
-
-        .form-control, .btn-secondary, .form-select {
-            background-color: #3b4045;
-            border-color: #555;
-            color: var(--bs-body-color);
-        }
-
-        .form-control:focus, .form-select:focus {
-            background-color: #3b4045;
-            color: var(--bs-body-color);
-            border-color: #2bfbfc;
-            box-shadow: 0 0 0 0.25rem rgba(43, 251, 252, 0.25);
-        }
-        
-        /* Custom Tabs Styling */
-        .nav-tabs .nav-link {
-            color: var(--bs-body-color); /* Tab text color */
-            border-color: var(--bs-border-color);
-            background-color: var(--bs-card-bg); /* Tab background color */
-        }
-
-        .nav-tabs .nav-link.active {
-            color: #2bfbfc; /* Active tab text color */
-            background-color: #3b4045; /* Active tab background color */
-            border-color: #2bfbfc #2bfbfc #3b4045; /* Highlight border */
-        }
-
-        /* FullCalendar Custom Theming */
-        .fc {
-            --fc-neutral-bg-color: #3b4045;
-            --fc-border-color: #a96094;
-            --fc-daygrid-event-dot-width: 8px;
-            --fc-page-bg-color: var(--bs-body-bg);
-            --fc-button-hover-bg-color: #555;
-            --fc-button-bg-color: #444;
-            --fc-button-border-color: #666;
-            --fc-button-text-color: #f8f9fa;
-            --fc-today-bg-color: #495057;
-        }
+		/* ... (other styles) ... */
 
         /* Custom event coloring based on profit/loss */
         .event-profit {
@@ -101,6 +45,12 @@
             border-color: var(--fc-bg-event-loss);
             color: #fff; 
         }
+        
+        /* === NEW: Explicitly set event title color to white for loss days === */
+        .event-loss .fc-event-main {
+            color: #fff; 
+        }
+        /* =================================================================== */
 
         .event-neutral {
             background-color: #495057;
@@ -1202,4 +1152,5 @@ function initializeCalendar(dailySummary) {
 </body>
 
 </html>
+
 
