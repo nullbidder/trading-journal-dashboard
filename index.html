@@ -262,27 +262,18 @@
         </div>
 						 
 <div class="row g-4 mb-4">
-    <div class="col-lg-6" id="chart-column">
-		    <button id="toggleRightPanelButton" class="btn btn-secondary w-100 mt-auto" type="button">
-                Hide Right Panel (Charts Only View)
-            </button>
-        <div class="card p-4 h-100 d-flex flex-column">
-            <h5 class="card-title text-center text-white mb-3">Account Value Over Time (Daily Cash Flow)</h5>
-            <div class="chart-container flex-grow-1 mb-3">
-                <canvas id="accountValueChart"></canvas>
-            </div>
-            
-
-            </div>
-    </div>
-
-<div class="col-lg-6" id="right-panel-tabs">
+    <div class="col-lg-12">
         <div class="card p-4 h-100 d-flex flex-column">
             
             <ul class="nav nav-tabs nav-justified mb-3" id="mainTabs" role="tablist">
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="calendar-tab-btn" data-bs-toggle="tab" data-bs-target="#calendar-tab" type="button" role="tab" aria-controls="calendar-tab" aria-selected="true" onclick="ensureCalendarRerender()">
+                    <button class="nav-link active" id="calendar-tab-btn" data-bs-toggle="tab" data-bs-target="#calendar-tab" type="button" role="tab" aria-controls="calendar-tab" aria-selected="true">
                         Daily P&L Calendar
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="chart-tab-btn" data-bs-toggle="tab" data-bs-target="#chart-tab" type="button" role="tab" aria-controls="chart-tab" aria-selected="false">
+                        Account Value Chart
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
@@ -303,7 +294,13 @@
                     <h5 class="card-title text-center text-white mb-3">Daily Realized P&L Calendar</h5>
                     <div id="calendar"></div>
                 </div>
-                
+
+                <div class="tab-pane fade h-100" id="chart-tab" role="tabpanel" aria-labelledby="chart-tab-btn">
+                    <h5 class="card-title text-center text-white mb-3">Account Value Over Time (Daily Cash Flow)</h5>
+                    <div class="chart-container flex-grow-1 mb-3">
+                        <canvas id="accountValueChart"></canvas>
+                    </div>
+                </div>
                 <div class="tab-pane fade h-100" id="trades-tab" role="tabpanel" aria-labelledby="trades-tab-btn">
                     <h5 class="card-title text-white mb-3">Closed Trade History (Consolidated)</h5>
                     
@@ -444,10 +441,8 @@
         // --- Summary Stats Logic ---
 
         function renderSummaryStats(dailySummary, allTrades) {
-            // Note: The input is now in the Settings tab, but the ID remains the same
             const initialValue = parseFloat(document.getElementById('initial-value').value) || 0;
             
-            // NEW: Get card elements (safely)
             const wireReceivedEl = document.getElementById('stat-wire-received');
             const wireSentEl = document.getElementById('stat-wire-sent');																				 
 									 
@@ -465,7 +460,6 @@
                  document.getElementById('stat-avg-pnl').innerText = '$0.00';
                  document.getElementById('stat-avg-daily-percent-gain').innerText = '0.00%'; 
 				 
-	                 // NEW: Initialize new stats
                  if (wireReceivedEl) wireReceivedEl.innerText = '$0.00';
                  if (wireSentEl) wireSentEl.innerText = '$0.00';										 
 									
@@ -606,6 +600,7 @@
                 dataPoints.push(runningBalance);
             });
             
+            // Destroy existing chart to prevent redraw issues
             if (accountValueChart) {
                 accountValueChart.destroy();
             }
@@ -621,10 +616,8 @@
                     datasets: [{
                         label: 'Total Account Value ($)',
                         data: dataPoints, 
-                        // *** THIS IS WHERE COLORS ARE DETERMINED ***
                         backgroundColor: dataPoints.map(val => val >= initialValue ? CHART_PROFIT_COLOR_RGB : CHART_LOSS_COLOR_RGB),
                         borderColor: dataPoints.map(val => val >= initialValue ? CHART_PROFIT_COLOR_HEX : CHART_LOSS_COLOR_HEX),
-                        // *****************************************
                         borderWidth: 1
                     }]
                 },
@@ -652,101 +645,104 @@
         }
 
 
-        // --- Calendar Rendering Logic ---
+        // --- Calendar and Chart Rerender Logic (UPDATED) ---
         
-function initializeCalendar(dailySummary) {
-    if (typeof FullCalendar === 'undefined') {
-        console.warn("FullCalendar library is not loaded. Cannot initialize calendar.");
-        return;
-    }
-
-    const calendarEl = document.getElementById('calendar');
-
-    if (calendarInstance) {
-        calendarInstance.destroy();
-        calendarInstance = null;
-    }
-
-    const events = [];
-    const dayCellClasses = {}; // Map to store custom class for each day
-
-    dailySummary.forEach(day => {
-        const profit = parseFloat(day.Profit);
-        const isProfit = profit > 0;
-        const isLoss = profit < 0;
-        const calendarDate = day.Date; 
-
-        // 1. Create the event label
-        events.push({
-            title: `${isProfit ? '+' : ''}$${Math.abs(profit).toFixed(2)}`,
-            start: calendarDate,
-            allDay: true, 
-            classNames: isProfit ? ['event-profit'] : (isLoss ? ['event-loss'] : ['event-neutral']),
-            extendedProps: {
-                netAmount: profit
+        function initializeCalendar(dailySummary) {
+            if (typeof FullCalendar === 'undefined') {
+                console.warn("FullCalendar library is not loaded. Cannot initialize calendar.");
+                return;
             }
-        });
 
-        // 2. Map the custom class to the day for full cell coloring
-        if (isProfit) {
-            dayCellClasses[calendarDate] = 'fc-day-profit';
-        } else if (isLoss) {
-            dayCellClasses[calendarDate] = 'fc-day-loss';
-        }
-    });
-    
-    // Configure and render the calendar
-    calendarInstance = new FullCalendar.Calendar(calendarEl, {
-        headerToolbar: {
-            left: 'prev,next today',
-            center: 'title',
-            right: 'dayGridMonth'
-        }, 
-        initialDate: events.length > 0 ? events[0].start : new Date(), 
-        navLinks: true,
-        editable: false,
-        selectable: true,
-        themeSystem: 'bootstrap5',
-        
-        // --- ADDED THIS LINE TO HIDE WEEKENDS ---
-        weekends: false,
-        // ----------------------------------------
-        
-        events: events,
-        
-        // Use dayCellDidMount to apply the class to the day's background cell
-        dayCellDidMount: function(info) {
-            const dateKey = formatDateToKey(info.date);
-            const classToAdd = dayCellClasses[dateKey];
-            if (classToAdd) {
-                // The info.el is the <td> element for the day cell
-                info.el.classList.add(classToAdd);
+            const calendarEl = document.getElementById('calendar');
+
+            if (calendarInstance) {
+                calendarInstance.destroy();
+                calendarInstance = null;
+            }
+
+            const events = [];
+            const dayCellClasses = {}; 
+
+            dailySummary.forEach(day => {
+                const profit = parseFloat(day.Profit);
+                const isProfit = profit > 0;
+                const isLoss = profit < 0;
+                const calendarDate = day.Date; 
+
+                events.push({
+                    title: `${isProfit ? '+' : ''}$${Math.abs(profit).toFixed(2)}`,
+                    start: calendarDate,
+                    allDay: true, 
+                    classNames: isProfit ? ['event-profit'] : (isLoss ? ['event-loss'] : ['event-neutral']),
+                    extendedProps: {
+                        netAmount: profit
+                    }
+                });
+
+                if (isProfit) {
+                    dayCellClasses[calendarDate] = 'fc-day-profit';
+                } else if (isLoss) {
+                    dayCellClasses[calendarDate] = 'fc-day-loss';
+                }
+            });
+            
+            calendarInstance = new FullCalendar.Calendar(calendarEl, {
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth'
+                }, 
+                initialDate: events.length > 0 ? events[0].start : new Date(), 
+                navLinks: true,
+                editable: false,
+                selectable: true,
+                themeSystem: 'bootstrap5',
+                weekends: false,
+                events: events,
+                dayCellDidMount: function(info) {
+                    const dateKey = formatDateToKey(info.date);
+                    const classToAdd = dayCellClasses[dateKey];
+                    if (classToAdd) {
+                        info.el.classList.add(classToAdd);
+                    }
+                }
+            });
+            
+            // Only render calendar if the tab is already active (default is active)
+            const calendarTab = document.getElementById('calendar-tab');
+            if(calendarTab && calendarTab.classList.contains('active')) {
+                calendarInstance.render();
             }
         }
-    });
-    
-    calendarInstance.render();
-}
 
         /**
-         * Ensures the calendar is correctly sized when its tab is made active.
+         * Generic function to handle redrawing elements inside inactive tabs.
          */
-        function ensureCalendarRerender() {
-            if (calendarInstance) {
-                setTimeout(() => {
-                    calendarInstance.updateSize();
-                }, 10);
-            }
+        function handleTabActivation(tabId) {
+            // Give the DOM a moment to complete the tab transition
+            setTimeout(() => {
+                if (tabId === 'calendar-tab') {
+                    if (calendarInstance) {
+                        calendarInstance.updateSize();
+                    } else if (dailyRealizedProfitData.length > 0) {
+                        // Re-initialize if for some reason it wasn't rendered on load
+                        initializeCalendar(dailyRealizedProfitData);
+                    }
+                } else if (tabId === 'chart-tab') {
+                    // Re-render the chart, which automatically resizes it
+                    if (dailyCashFlowData.length > 0) {
+                        renderAccountValueChart(dailyCashFlowData);
+                    }
+                }
+            }, 10);
         }
 
-
-        // --- Symbol Filter Population Logic (NEW) ---
+        // --- Symbol Filter Population Logic ---
 
         function populateSymbolFilter(symbols) {
             const selectElement = document.getElementById('symbolFilterInput');
             if (!selectElement) return;
 
-            // Clear existing options and add the default "All Symbols" option
             selectElement.innerHTML = '<option value="">All Symbols</option>';
 
             symbols.forEach(symbol => {
@@ -755,11 +751,10 @@ function initializeCalendar(dailySummary) {
                 option.textContent = symbol;
                 selectElement.appendChild(option);
             });
-            // Ensure the dropdown is reset to "All Symbols" when re-populated
             selectElement.value = ""; 
         }
 
-        // --- Trade Table Rendering Logic (UPDATED FOR AGGREGATED DATA) ---
+        // --- Trade Table Rendering Logic ---
 
         function renderTradesTable(tradeGroups, filterText = '') {
             const tbody = document.getElementById('tradesTableBody');
@@ -767,22 +762,18 @@ function initializeCalendar(dailySummary) {
 
             tbody.innerHTML = ''; 
             
-            // Filter the trades based on the filterText (using the cleaned symbol)
             const normalizedFilter = cleanSymbol(filterText).toUpperCase();
             
             const filteredGroups = tradeGroups.filter(group => {
-                if (!normalizedFilter) return true; // Show all if filter is empty (i.e., 'All Symbols' is selected)
+                if (!normalizedFilter) return true; 
                 
-                // Use the cleanSymbol function on the trade's symbol for comparison
                 const cleanedGroupSymbol = cleanSymbol(group.Symbol).toUpperCase();
                 
-                // Now checks for exact match, as symbols from the dropdown are exact
                 return cleanedGroupSymbol === normalizedFilter; 
             });
 
             if (filteredGroups.length === 0) {
                  const row = tbody.insertRow();
-                 // COLSPAN UPDATED TO 9 (from 8)
                  row.innerHTML = `<td colspan="9" class="text-center text-muted">No closed trade groups match your criteria.</td>`;
                  return;
             }
@@ -792,11 +783,10 @@ function initializeCalendar(dailySummary) {
                 const avgOpenPrice = parseFloat(group.AvgOpenPrice);
                 const avgClosePrice = parseFloat(group.AvgClosePrice);
                 
-                // Calculate Percentage Gain
                 let percentGain = 0;
-                if (avgOpenPrice > 0) {
-                    // Total P&L / Total Cost Basis (TotalCostBasis was calculated in aggregateTradePairs)
-                    percentGain = (profit / (group.TotalProceeds - profit)) * 100;
+                if (group.TotalCostBasis > 0) {
+                    // Use TotalCostBasis calculated during aggregation
+                    percentGain = (profit / group.TotalCostBasis) * 100;
                 }
                 
                 const isProfit = profit > 0;
@@ -816,13 +806,11 @@ function initializeCalendar(dailySummary) {
                 
                 const profitText = `${profit >= 0 ? '+' : ''}$${Math.abs(profit).toFixed(2)}`;
                 
-                // Percentage formatting
                 const percentText = `${percentGain >= 0 ? '+' : ''}${percentGain.toFixed(2)}%`;
                 
                 const row = tbody.insertRow();
                 const profitClass = isProfit ? 'text-info' : (profit < 0 ? 'text-danger' : 'text-secondary');
                 
-                // NOTE: Using MinOpenDate, MaxCloseDate, TotalQuantity, AvgOpenPrice, AvgClosePrice
                 row.innerHTML = `
                     <td>${group.Symbol}</td>
                     <td>${group.MinOpenDate}</td>
@@ -848,7 +836,6 @@ function initializeCalendar(dailySummary) {
                 const symbol = pair.Symbol;
                 const quantity = parseFloat(pair.Quantity);
                 const netProfit = parseFloat(pair.NetProfit);
-                // Total cash outflow for the open (negative amount converted to positive cost basis)
                 const openAmount = Math.abs(parseFloat(pair.OpenAmount)); 
                 const openDate = pair.OpenDate;
                 const closeDate = pair.CloseDate;
@@ -860,7 +847,7 @@ function initializeCalendar(dailySummary) {
                         MaxCloseDate: closeDate,
                         TotalQuantity: 0,
                         TotalNetProfit: 0,
-                        TotalCostBasis: 0, // Sum of absolute Open Amounts
+                        TotalCostBasis: 0, 
                     });
                 }
 
@@ -871,7 +858,7 @@ function initializeCalendar(dailySummary) {
                 group.TotalNetProfit += netProfit;
                 group.TotalCostBasis += openAmount;
 
-                // 2. Track Min/Max Dates (to show the span of the position)
+                // 2. Track Min/Max Dates
                 if (openDate < group.MinOpenDate) {
                     group.MinOpenDate = openDate;
                 }
@@ -883,26 +870,15 @@ function initializeCalendar(dailySummary) {
             // 3. Final calculations for Average Prices
             const aggregatedArray = Array.from(aggregatedMap.values()).map(group => {
                 
-                // Total Proceeds is Cost Basis + Profit/Loss
                 const totalProceeds = group.TotalCostBasis + group.TotalNetProfit;
                 
-                // Average Open Price = Total Cost Basis / Total Quantity
                 group.AvgOpenPrice = group.TotalQuantity > 0 ? (group.TotalCostBasis / group.TotalQuantity) : 0;
                 
-                // Average Close Price = Total Proceeds / Total Quantity
                 group.AvgClosePrice = group.TotalQuantity > 0 ? (totalProceeds / group.TotalQuantity) : 0;
-                
-                // Keep TotalProceeds for the % P&L calculation in renderTradesTable
-                group.TotalProceeds = totalProceeds;
-
-                // For clean output, we don't need TotalCostBasis in the final object
-                // But we must pass it to the render function logic if needed for % calc, 
-                // so we'll just keep it here as it's cleaner than recalculating.
                 
                 return group;
             });
 
-            // Sort by close date (latest first)
             aggregatedArray.sort((a, b) => new Date(b.MaxCloseDate) - new Date(a.MaxCloseDate));
 
             return aggregatedArray;
@@ -917,7 +893,6 @@ function initializeCalendar(dailySummary) {
             const tradePairs = [];
             const uniqueSymbolsSet = new Set(); 
 			
-            // NEW: Reset global wire totals
             totalWireReceivedAmount = 0; 
             totalWireSentAmount = 0;
 
@@ -926,11 +901,10 @@ function initializeCalendar(dailySummary) {
                 const dateKey = formatDateToKey(transaction.Date);
                 const amount = transaction.Amount; 
                 
-                // NEW: Track wire transfers
                 if (transaction.Action === 'Wire Received') {
                     totalWireReceivedAmount += amount;
                 } else if (transaction.Action === 'Wire Sent') {
-                    totalWireSentAmount += amount; // Amount is negative, so we add it.
+                    totalWireSentAmount += amount; 
                 }
 				 
 
@@ -960,18 +934,15 @@ function initializeCalendar(dailySummary) {
                 return 0; 
             });
             
-            // Unmatched trades keyed by FULL RAW symbol
             const unmatchedBuys = {}; 
             
             trades.forEach(trade => {
                 const dateKey = formatDateToKey(trade.Date);
                 const rawSymbol = trade.Symbol;
                 
-                // For the Symbol Filter Dropdown (Cleaned Symbol)
                 const cleanSymbolKey = cleanSymbol(rawSymbol);
                 uniqueSymbolsSet.add(cleanSymbolKey);
 
-                // Use the full raw symbol for matching the specific contract
                 const tradeMatchKey = rawSymbol; 
 
                 if (!unmatchedBuys[tradeMatchKey]) {
@@ -986,56 +957,40 @@ function initializeCalendar(dailySummary) {
                     
                     if (openBuys && openBuys.length > 0) {
 
-                        let qtyToClose = trade.Quantity; // The quantity of the STC transaction
+                        let qtyToClose = trade.Quantity; 
                         let netProfitTotal = 0; 
                         let closedPairs = []; 
     
                         while (qtyToClose > 0 && openBuys.length > 0) {
-                            const matchedBuy = openBuys[0]; // FIFO: Get the oldest open trade
+                            const matchedBuy = openBuys[0]; 
                             
-                            // Determine the quantity we can match in this step (min of STC needed and BTO available)
                             const qtyMatch = Math.min(qtyToClose, matchedBuy.Quantity);
                             
-                            // --- Calculate Pro-Rata Profit for the Matched Quantity (FIFO Cost Basis) ---
-                            
-                            // Cost Basis for QtyMatch: (QtyMatch / BTO_TotalQty) * BTO_TotalAmount (Amount is negative for BTO)
-                            // matchedBuy.Amount is the total cash outflow for that BTO line item.
                             const proRataCost = (qtyMatch / matchedBuy.Quantity) * matchedBuy.Amount; 
-                            
-                            // Proceeds for QtyMatch: (QtyMatch / STC_TotalQty) * STC_TotalAmount
-                            // trade.Amount is the total cash inflow for the STC line item.
                             const proRataProceeds = (qtyMatch / trade.Quantity) * trade.Amount;
                             
                             const netProfitMatch = proRataCost + proRataProceeds;
                             netProfitTotal += netProfitMatch;
                             
-                            // --- Create Trade Pair Record ---
                             closedPairs.push({
                                 OpenDate: formatDateToKey(matchedBuy.Date),
                                 CloseDate: dateKey,
                                 Symbol: rawSymbol, 
                                 NetProfit: netProfitMatch.toFixed(2),
-                                OpenAmount: proRataCost.toFixed(2), // Pro-rata cost basis
+                                OpenAmount: proRataCost.toFixed(2), 
                                 Quantity: qtyMatch.toFixed(0), 
                                 OpenPrice: matchedBuy.Price.toFixed(2) 
                             });
     
-                            // --- Update Quantities and Queue ---
-                            
                             if (qtyMatch === matchedBuy.Quantity) {
-                                // BTO fully consumed. Remove from queue.
                                 openBuys.shift();
                             } else {
-                                // BTO partially consumed. Update its quantity and amount proportionally.
-                                
                                 const remainingQuantity = matchedBuy.Quantity - qtyMatch;
                                 const originalQuantity = matchedBuy.Quantity;
                                 
                                 matchedBuy.Quantity = remainingQuantity;
-                                // Recalculate the remaining cost basis proportionally
                                 matchedBuy.Amount = (remainingQuantity / originalQuantity) * matchedBuy.Amount;
                                 
-                                // Since we matched the rest of the STC from this partial BTO, we break
                                 qtyToClose = 0; 
                                 break; 
                             }
@@ -1043,19 +998,14 @@ function initializeCalendar(dailySummary) {
                             qtyToClose -= qtyMatch;
                         }
                         
-                        // --- Post-Loop Aggregation (Handle Unmatched STC & Update daily P&L) ---
-                        
-                        // If qtyToClose > 0, the STC transaction could not fully match an open BTO position.
                         if (qtyToClose > 0) {
                             const unmatchedProceeds = (qtyToClose / trade.Quantity) * trade.Amount;
                             netProfitTotal += unmatchedProceeds;
                             console.warn(`STC for ${rawSymbol} on ${dateKey} had ${qtyToClose} unmatched quantity. P&L absorbed into daily summary.`);
                         }
     
-                        // Add the created pairs to the global list
                         tradePairs.push(...closedPairs);
     
-                        // Add the total net profit from this closing transaction to the daily realized profit
                         if (netProfitTotal !== 0) {
                             if (!dailyRealizedProfitMap.has(dateKey)) {
                                 dailyRealizedProfitMap.set(dateKey, 0);
@@ -1063,8 +1013,6 @@ function initializeCalendar(dailySummary) {
                             dailyRealizedProfitMap.set(dateKey, dailyRealizedProfitMap.get(dateKey) + netProfitTotal);
                         }
                     } else {
-                        // Handle STC without matching BTOs (e.g. closing a short position without tracking the BTO to close it)
-                        // This profit is absorbed into the daily realized profit but no trade pair is created.
                         if (!dailyRealizedProfitMap.has(dateKey)) {
                             dailyRealizedProfitMap.set(dateKey, 0);
                         }
@@ -1099,8 +1047,7 @@ function initializeCalendar(dailySummary) {
         }
 
 
-        // --- CSV Parsing Logic ---
-
+        // --- CSV Parsing Logic (omitted for brevity, assume content is the same as previous step) ---
         function parseCSV(csvContent) {
             const lines = csvContent.trim().split('\n');
             const headerLine = lines[0].trim();
@@ -1153,48 +1100,6 @@ function initializeCalendar(dailySummary) {
             return records;
         }
 
-        // --- Right Panel Toggle Logic (Updated) ---
-
-        function toggleRightPanelVisibility() {
-            const chartColumn = document.getElementById('chart-column');
-            const rightPanelTabs = document.getElementById('right-panel-tabs'); 
-            const button = document.getElementById('toggleRightPanelButton');
-
-            if (!chartColumn || !rightPanelTabs || !button) return;
-
-            const isContentVisible = rightPanelTabs.classList.contains('col-lg-6');
-
-            if (isContentVisible) {
-                // HIDE Right Panel (Tabs)
-                button.textContent = 'Show Right Panel';
-                
-                rightPanelTabs.classList.remove('col-lg-6');
-                rightPanelTabs.classList.add('d-none');
-                
-                chartColumn.classList.remove('col-lg-6');
-                chartColumn.classList.add('col-lg-12');
-                
-                renderAccountValueChart(dailyCashFlowData); 
-            } else {
-                // SHOW Right Panel (Tabs)
-                button.textContent = 'Hide Right Panel (Charts Only View)';
-                
-                rightPanelTabs.classList.add('col-lg-6');
-                rightPanelTabs.classList.remove('d-none');
-                
-                chartColumn.classList.remove('col-lg-12');
-                chartColumn.classList.add('col-lg-6');
-                
-                renderAccountValueChart(dailyCashFlowData); 
-                
-                // If the calendar tab is active, ensure it re-renders
-                const calendarTabBtn = document.getElementById('calendar-tab-btn');
-                if (calendarTabBtn && calendarTabBtn.classList.contains('active')) {
-                     ensureCalendarRerender();
-                }
-            }
-        }
-
 
         // --- DOM and Event Handling ---
 
@@ -1202,15 +1107,21 @@ function initializeCalendar(dailySummary) {
             const uploadButton = document.getElementById('uploadDataButton');
             const fileInput = document.getElementById('fileInput');
             const initialValueInput = document.getElementById('initial-value');
-            const toggleButton = document.getElementById('toggleRightPanelButton'); 
             const symbolFilterInput = document.getElementById('symbolFilterInput'); 
+            
+            const tabButtons = document.querySelectorAll('#mainTabs button');
 
-            // 1. Toggle Button Listener
-            if (toggleButton) {
-                toggleButton.addEventListener('click', toggleRightPanelVisibility);
-            }
+            // 1. Tab Activation Listeners (NEW/UPDATED)
+            tabButtons.forEach(button => {
+                button.addEventListener('shown.bs.tab', (event) => {
+                    // event.target.dataset.bsTarget is the target tab pane ID (e.g., #chart-tab)
+                    const targetId = event.target.dataset.bsTarget.substring(1); 
+                    handleTabActivation(targetId);
+                });
+            });
 
-            // 2. File Upload Listener (Logic modified to call aggregation)
+
+            // 2. File Upload Listener
             if (uploadButton && fileInput) {
                 uploadButton.addEventListener('click', () => {
                     fileInput.click();
@@ -1240,17 +1151,16 @@ function initializeCalendar(dailySummary) {
                                 dailyCashFlowData = dailyCashFlowSummary; 
                                 dailyRealizedProfitData = dailyRealizedProfitSummary;
                                 tradePairsData = tradePairs; 
-                                aggregatedTradePairsData = aggregateTradePairs(tradePairsData); // <-- NEW STEP: Aggregate the data
+                                aggregatedTradePairsData = aggregateTradePairs(tradePairsData); 
                                 uniqueTradeSymbols = uniqueSymbols; 
                                 
                                 // RENDER ALL CONTENT
                                 initializeCalendar(dailyRealizedProfitData); 
-                                renderAccountValueChart(dailyCashFlowData);
+                                // Chart is initialized/rendered on its tab selection
                                 renderSummaryStats(dailyRealizedProfitData, financialData); 
                                 
-                                // RENDER TABLE with aggregated data
                                 populateSymbolFilter(uniqueTradeSymbols);
-                                renderTradesTable(aggregatedTradePairsData, symbolFilterInput ? symbolFilterInput.value : ''); // <-- Use aggregated data
+                                renderTradesTable(aggregatedTradePairsData, symbolFilterInput ? symbolFilterInput.value : '');
                                 
                                 showMessage(`Successfully processed ${financialData.length} records. Dashboard updated.`);
                                 
@@ -1269,23 +1179,24 @@ function initializeCalendar(dailySummary) {
                 initialValueInput.addEventListener('change', () => {
                     renderSummaryStats(dailyRealizedProfitData, financialData); 
                     
-                    if (dailyCashFlowData.length > 0) {
+                    // If the chart tab is active, force a rerender
+                    const chartTab = document.getElementById('chart-tab');
+                    if (chartTab && chartTab.classList.contains('active') && dailyCashFlowData.length > 0) {
                         renderAccountValueChart(dailyCashFlowData);
                     }
                 });
             }
 
-            // 4. Symbol Filter Listener (Now filters aggregated data)
+            // 4. Symbol Filter Listener
             if (symbolFilterInput) {
                 symbolFilterInput.addEventListener('change', () => {
-                    // Filter logic is now an exact match of the selected option value
                     renderTradesTable(aggregatedTradePairsData, symbolFilterInput.value); 
                 });
             }
 
             // Initial render of stats with default value
             renderSummaryStats([], []);
-            renderTradesTable([], ''); // Initial render of table
+            renderTradesTable([], ''); 
         });
     </script>
 </body>
