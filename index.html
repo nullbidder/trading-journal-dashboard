@@ -963,3 +963,226 @@
                                 Quantity: qtyMatch.toFixed(0), 
                                 OpenPrice: matchedBuy.Price.toFixed(2) 
                             });
+    
+                            if (qtyMatch === matchedBuy.Quantity) {
+                                openBuys.shift();
+                            } else {
+                                const remainingQuantity = matchedBuy.Quantity - qtyMatch;
+                                const originalQuantity = matchedBuy.Quantity;
+                                
+                                matchedBuy.Quantity = remainingQuantity;
+                                matchedBuy.Amount = (remainingQuantity / originalQuantity) * matchedBuy.Amount;
+                                
+                                qtyToClose = 0; 
+                                break; 
+                            }
+                            
+                            qtyToClose -= qtyMatch;
+                        }
+                        
+                        if (qtyToClose > 0) {
+                            const unmatchedProceeds = (qtyToClose / trade.Quantity) * trade.Amount;
+                            netProfitTotal += unmatchedProceeds;
+                            console.warn(`STC for ${rawSymbol} on ${dateKey} had ${qtyToClose} unmatched quantity. P&L absorbed into daily summary.`);
+                        }
+    
+                        tradePairs.push(...closedPairs);
+    
+                        if (netProfitTotal !== 0) {
+                            if (!dailyRealizedProfitMap.has(dateKey)) {
+                                dailyRealizedProfitMap.set(dateKey, 0);
+                            }
+                            dailyRealizedProfitMap.set(dateKey, dailyRealizedProfitMap.get(dateKey) + netProfitTotal);
+                        }
+                    } else {
+                        if (!dailyRealizedProfitMap.has(dateKey)) {
+                            dailyRealizedProfitMap.set(dateKey, 0);
+                        }
+                        dailyRealizedProfitMap.set(dateKey, dailyRealizedProfitMap.get(dateKey) + trade.Amount); 
+                    }
+                }
+            });
+
+            // 3. Final Summaries
+            const cashFlowSummary = Array.from(dailyCashMap).map(([dateString, profit]) => ({
+                Date: dateString, 
+                Profit: profit 
+            }));
+            
+            const realizedProfitSummary = Array.from(dailyRealizedProfitMap).map(([dateString, profit]) => ({
+                Date: dateString, 
+                Profit: profit 
+            }));
+            
+            const dateSorter = (a, b) => new Date(a.Date) - new Date(b.Date);
+            cashFlowSummary.sort(dateSorter);
+            realizedProfitSummary.sort(dateSorter);
+            
+            const uniqueSymbolsArray = Array.from(uniqueSymbolsSet).sort(); 
+
+            return {
+                tradePairs: tradePairs,
+                dailyCashFlowSummary: cashFlowSummary,        
+                dailyRealizedProfitSummary: realizedProfitSummary,
+                uniqueSymbols: uniqueSymbolsArray 
+            };
+        }
+
+
+        // --- CSV Parsing Logic (omitted for brevity, assume content is the same as previous step) ---
+        function parseCSV(csvContent) {
+            const lines = csvContent.trim().split('\n');
+            const headerLine = lines[0].trim();
+            const headers = (headerLine.match(/"([^"]*)"/g) || []).map(h => h.replace(/"/g, '').trim());
+
+            if (headers.length === 0) {
+                console.error("CSV header format error: Could not find quoted header fields.");
+                return [];
+            }
+            
+            const records = [];
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+
+                const valuesMatch = line.match(/"([^"]*)"/g); 
+                let rawValues = [];
+                
+                if (!valuesMatch || valuesMatch.length !== headers.length) {
+                    rawValues = line.split(',').map(v => v.trim());
+                    if (rawValues.length !== headers.length) {
+                        console.warn(`Skipping malformed row ${i + 1}. Header/Value count mismatch: ${line}`);
+                        continue;
+                    }
+                } else {
+                    rawValues = valuesMatch.map(v => v.replace(/"/g, '').trim());
+                }
+                
+                const record = {};
+                headers.forEach((header, index) => {
+                    let value = rawValues[index];
+
+                    switch (header) {
+                        case 'Date':
+                            record[header] = new Date(value);
+                            break;
+                        case 'Quantity':
+                        case 'Price':
+                        case 'Fees & Comm':
+                        case 'Amount':
+                            let cleanedValue = value.replace(/[$,]/g, '');
+                            record[header] = parseFloat(cleanedValue) || 0; 
+                            break;
+                        default:
+                            record[header] = value;
+                    }
+                });
+                records.push(record);
+            }
+            return records;
+        }
+
+
+        // --- DOM and Event Handling ---
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const uploadButton = document.getElementById('uploadDataButton');
+            const fileInput = document.getElementById('fileInput');
+            const initialValueInput = document.getElementById('initial-value');
+            const symbolFilterInput = document.getElementById('symbolFilterInput'); 
+            
+            const tabButtons = document.querySelectorAll('#mainTabs button');
+
+            // 1. Tab Activation Listeners (Simplified due to chart being outside)
+            tabButtons.forEach(button => {
+                button.addEventListener('shown.bs.tab', (event) => {
+                    const targetId = event.target.dataset.bsTarget.substring(1); 
+                    
+                    // Specific fix for calendar when switching tabs
+                    if (targetId === 'calendar-tab' && calendarInstance) {
+                         // Force size update to fix squashed calendar after it becomes visible
+                         setTimeout(() => { calendarInstance.updateSize(); }, 10);
+                    }
+                });
+            });
+
+
+            // 2. File Upload Listener 
+            if (uploadButton && fileInput) {
+                uploadButton.addEventListener('click', () => {
+                    fileInput.click();
+                });
+
+                fileInput.addEventListener('change', (event) => {
+                    const file = event.target.files[0];
+                    
+                    if (file) {
+                        if (!file.name.toLowerCase().endsWith('.csv') && !file.name.toLowerCase().endsWith('.txt')) {
+                            showMessage('Please upload a CSV or TXT file.');
+                            event.target.value = null; 
+                            return;
+                        }
+                        
+                        const reader = new FileReader();
+
+                        reader.onload = (e) => {
+                            const rawContent = e.target.result;
+                            const parsedData = parseCSV(rawContent);
+                            
+                            if (parsedData.length > 0) {
+                                financialData = parsedData; 
+                                
+                                const { tradePairs, dailyCashFlowSummary, dailyRealizedProfitSummary, uniqueSymbols } = calculateDailyProfit(financialData);
+                                
+                                dailyCashFlowData = dailyCashFlowSummary; 
+                                dailyRealizedProfitData = dailyRealizedProfitSummary;
+                                tradePairsData = tradePairs; 
+                                aggregatedTradePairsData = aggregateTradePairs(tradePairsData); 
+                                uniqueTradeSymbols = uniqueSymbols; 
+                                
+                                // RENDER ALL CONTENT
+                                initializeCalendar(dailyRealizedProfitData); 
+                                renderAccountValueChart(dailyCashFlowData); // Called on load since chart is now outside tabs
+                                renderSummaryStats(dailyRealizedProfitData, financialData); 
+                                
+                                populateSymbolFilter(uniqueTradeSymbols);
+                                renderTradesTable(aggregatedTradePairsData, symbolFilterInput ? symbolFilterInput.value : '');
+                                
+                                showMessage(`Successfully processed ${financialData.length} records. Dashboard updated.`);
+                                
+                            } else {
+                                showMessage("Failed to parse data. Please check the file format.");
+                            }
+                        };
+
+                        reader.readAsText(file);
+                    }
+                });
+            }
+
+            // 3. Initial Value Change Listener (Rerenders stats and chart)
+            if (initialValueInput) {
+                initialValueInput.addEventListener('change', () => {
+                    renderSummaryStats(dailyRealizedProfitData, financialData); 
+                    
+                    if (dailyCashFlowData.length > 0) {
+                        renderAccountValueChart(dailyCashFlowData);
+                    }
+                });
+            }
+
+            // 4. Symbol Filter Listener
+            if (symbolFilterInput) {
+                symbolFilterInput.addEventListener('change', () => {
+                    renderTradesTable(aggregatedTradePairsData, symbolFilterInput.value); 
+                });
+            }
+
+            // Initial render of stats with default value
+            renderSummaryStats([], []);
+            renderTradesTable([], ''); 
+        });
+    </script>
+</body>
+
+</html>
