@@ -889,7 +889,6 @@ function initializeCalendar(dailySummary) {
             });
             
             // Unmatched trades keyed by FULL RAW symbol (e.g., 'SPXW 11/07/2025 6750.00 C')
-																								
             const unmatchedBuys = {}; 
             
             trades.forEach(trade => {
@@ -910,84 +909,94 @@ function initializeCalendar(dailySummary) {
                 if (trade.Action === 'Buy to Open') {
                     unmatchedBuys[tradeMatchKey].push(trade);
                 } else if (trade.Action === 'Sell to Close') {
-																  
-                    const allBuysToMatch = unmatchedBuys[tradeMatchKey];
                     
-                    if (allBuysToMatch && allBuysToMatch.length > 0) {
-										 
-									
-											   
-																				   
-															
-																				   
-								   
-								   
-						   
-                        
-                        const totalBTOQuantity = allBuysToMatch.reduce((sum, buy) => sum + buy.Quantity, 0);
-                        
-                        // Check if the STC transaction closes the entire accumulated BTO position
-                        if (totalBTOQuantity === trade.Quantity) {
-                            
-                            // 1. Combine metrics for the position's entry
-                            const totalBTOAmount = allBuysToMatch.reduce((sum, buy) => sum + buy.Amount, 0); 
-                            const oldestOpenDate = allBuysToMatch[0].Date; // FIFO: use the oldest open date
-                            
-                            // Calculate weighted average open price
-                            let totalBTOValue = 0;
-                            allBuysToMatch.forEach(buy => {
-                                // Amount includes fees, so use Quantity * Price to get true contract value
-                                totalBTOValue += (buy.Quantity * buy.Price); 
-                            });
-                            const combinedOpenPrice = totalBTOQuantity > 0 ? (totalBTOValue / totalBTOQuantity) : 0;
+                    const openBuys = unmatchedBuys[tradeMatchKey];
+                    
+                    if (openBuys && openBuys.length > 0) {
 
-                            // 2. Calculate the total net profit/loss for the entire closed position
-                            const netProfit = totalBTOAmount + trade.Amount; 
-
-                            tradePairs.push({
-                                OpenDate: formatDateToKey(oldestOpenDate),
+                        let qtyToClose = trade.Quantity; // The quantity of the STC transaction
+                        let netProfitTotal = 0; 
+                        let closedPairs = []; 
+    
+                        while (qtyToClose > 0 && openBuys.length > 0) {
+                            const matchedBuy = openBuys[0]; // FIFO: Get the oldest open trade
+                            
+                            // Determine the quantity we can match in this step (min of STC needed and BTO available)
+                            const qtyMatch = Math.min(qtyToClose, matchedBuy.Quantity);
+                            
+                            // --- Calculate Pro-Rata Profit for the Matched Quantity (FIFO Cost Basis) ---
+                            
+                            // Cost Basis for QtyMatch: (QtyMatch / BTO_TotalQty) * BTO_TotalAmount (Amount is negative for BTO)
+                            // matchedBuy.Amount is the total cash outflow for that BTO line item.
+                            const proRataCost = (qtyMatch / matchedBuy.Quantity) * matchedBuy.Amount; 
+                            
+                            // Proceeds for QtyMatch: (QtyMatch / STC_TotalQty) * STC_TotalAmount
+                            // trade.Amount is the total cash inflow for the STC line item.
+                            const proRataProceeds = (qtyMatch / trade.Quantity) * trade.Amount;
+                            
+                            const netProfitMatch = proRataCost + proRataProceeds;
+                            netProfitTotal += netProfitMatch;
+                            
+                            // --- Create Trade Pair Record ---
+                            closedPairs.push({
+                                OpenDate: formatDateToKey(matchedBuy.Date),
                                 CloseDate: dateKey,
                                 Symbol: rawSymbol, 
-                                NetProfit: netProfit.toFixed(2),
-                                OpenAmount: totalBTOAmount.toFixed(2), 
-                                Quantity: trade.Quantity.toFixed(0), // Total closed quantity (3 in your example)
-                                OpenPrice: combinedOpenPrice.toFixed(2) // Weighted average open price
+                                NetProfit: netProfitMatch.toFixed(2),
+                                OpenAmount: proRataCost.toFixed(2), // Pro-rata cost basis
+                                Quantity: qtyMatch.toFixed(0), 
+                                OpenPrice: matchedBuy.Price.toFixed(2) 
                             });
+    
+                            // --- Update Quantities and Queue ---
                             
-                            // 3. Add to daily realized profit on close date
+                            if (qtyMatch === matchedBuy.Quantity) {
+                                // BTO fully consumed. Remove from queue.
+                                openBuys.shift();
+                            } else {
+                                // BTO partially consumed. Update its quantity and amount proportionally.
+                                
+                                const remainingQuantity = matchedBuy.Quantity - qtyMatch;
+                                const originalQuantity = matchedBuy.Quantity;
+                                
+                                matchedBuy.Quantity = remainingQuantity;
+                                // Recalculate the remaining cost basis proportionally
+                                matchedBuy.Amount = (remainingQuantity / originalQuantity) * matchedBuy.Amount;
+                                
+                                // Since we matched the rest of the STC from this partial BTO, we break
+                                qtyToClose = 0; 
+                                break; 
+                            }
+                            
+                            qtyToClose -= qtyMatch;
+                        }
+                        
+                        // --- Post-Loop Aggregation (Handle Unmatched STC & Update daily P&L) ---
+                        
+                        // If qtyToClose > 0, the STC transaction could not fully match an open BTO position.
+                        if (qtyToClose > 0) {
+                            const unmatchedProceeds = (qtyToClose / trade.Quantity) * trade.Amount;
+                            netProfitTotal += unmatchedProceeds;
+                            console.warn(`STC for ${rawSymbol} on ${dateKey} had ${qtyToClose} unmatched quantity. P&L absorbed into daily summary.`);
+                        }
+    
+                        // Add the created pairs to the global list
+                        tradePairs.push(...closedPairs);
+    
+                        // Add the total net profit from this closing transaction to the daily realized profit
+                        if (netProfitTotal !== 0) {
                             if (!dailyRealizedProfitMap.has(dateKey)) {
                                 dailyRealizedProfitMap.set(dateKey, 0);
                             }
-                            dailyRealizedProfitMap.set(dateKey, dailyRealizedProfitMap.get(dateKey) + netProfit);
-
-                            // 4. Clear the matched BTOs (the entire position is closed)
-                            unmatchedBuys[tradeMatchKey] = [];
-                        } else {
-                            // If BTO quantity does not match STC quantity, 
-                            // this logic assumes partial closes are handled by separate rows 
-                            // or that the data is structured to match the quantities exactly for the pair.
-                            // Falling back to simple FIFO for the one-to-one match (original logic for single trades)
-                            if (allBuysToMatch.length > 0) {
-                                const matchedBuy = allBuysToMatch.shift(); 
-                                const netProfit = matchedBuy.Amount + trade.Amount; 
-
-                                tradePairs.push({
-                                    OpenDate: formatDateToKey(matchedBuy.Date),
-                                    CloseDate: dateKey,
-                                    Symbol: rawSymbol, // Store the full symbol for display
-                                    NetProfit: netProfit.toFixed(2),
-                                    OpenAmount: matchedBuy.Amount.toFixed(2), // Cost basis
-                                    Quantity: matchedBuy.Quantity.toFixed(0), 
-                                    OpenPrice: matchedBuy.Price.toFixed(2)    
-                                });
-                                
-                                if (!dailyRealizedProfitMap.has(dateKey)) {
-                                    dailyRealizedProfitMap.set(dateKey, 0);
-                                }
-                                dailyRealizedProfitMap.set(dateKey, dailyRealizedProfitMap.get(dateKey) + netProfit);
-                            }
+                            dailyRealizedProfitMap.set(dateKey, dailyRealizedProfitMap.get(dateKey) + netProfitTotal);
                         }
-																											 
+                    } else {
+                        // Handle STC without matching BTOs (e.g. closing a short position without tracking the BTO to close it)
+                        // This profit is absorbed into the daily realized profit but no trade pair is created.
+                        if (!dailyRealizedProfitMap.has(dateKey)) {
+                            dailyRealizedProfitMap.set(dateKey, 0);
+                        }
+                        dailyRealizedProfitMap.set(dateKey, dailyRealizedProfitMap.get(dateKey) + trade.Amount); 
                     }
                 }
             });
@@ -1209,6 +1218,3 @@ function initializeCalendar(dailySummary) {
 </body>
 
 </html>
-
-
-
