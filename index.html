@@ -264,16 +264,21 @@
 <div class="row g-4 mb-4">
     <div class="col-lg-12">
         <div class="card p-4 h-100 d-flex flex-column">
+            <h5 class="card-title text-center text-white mb-3">Account Value Over Time (Daily Cash Flow)</h5>
+            <div class="chart-container flex-grow-1 mb-3">
+                <canvas id="accountValueChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row g-4 mb-4">
+    <div class="col-lg-12">
+        <div class="card p-4 h-100 d-flex flex-column">
             
             <ul class="nav nav-tabs nav-justified mb-3" id="mainTabs" role="tablist">
                 <li class="nav-item" role="presentation">
                     <button class="nav-link active" id="calendar-tab-btn" data-bs-toggle="tab" data-bs-target="#calendar-tab" type="button" role="tab" aria-controls="calendar-tab" aria-selected="true">
                         Daily P&L Calendar
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="chart-tab-btn" data-bs-toggle="tab" data-bs-target="#chart-tab" type="button" role="tab" aria-controls="chart-tab" aria-selected="false">
-                        Account Value Chart
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
@@ -295,12 +300,6 @@
                     <div id="calendar"></div>
                 </div>
 
-                <div class="tab-pane fade h-100" id="chart-tab" role="tabpanel" aria-labelledby="chart-tab-btn">
-                    <h5 class="card-title text-center text-white mb-3">Account Value Over Time (Daily Cash Flow)</h5>
-                    <div class="chart-container flex-grow-1 mb-3">
-                        <canvas id="accountValueChart"></canvas>
-                    </div>
-                </div>
                 <div class="tab-pane fade h-100" id="trades-tab" role="tabpanel" aria-labelledby="trades-tab-btn">
                     <h5 class="card-title text-white mb-3">Closed Trade History (Consolidated)</h5>
                     
@@ -378,7 +377,7 @@
         let dailyCashFlowData = [];  
         let dailyRealizedProfitData = []; 
         let tradePairsData = [];     
-        let aggregatedTradePairsData = []; // NEW: Consolidated data
+        let aggregatedTradePairsData = []; // Consolidated data
         let uniqueTradeSymbols = []; 
         let accountValueChart;       
         let calendarInstance;        
@@ -564,7 +563,7 @@
             avgDailyPercentGainElement.classList.remove('text-success', 'text-danger');
             avgDailyPercentGainElement.classList.add(avgDailyPercentGain >= 0 ? 'text-success' : 'text-danger');
 			
-            // NEW: Update wire transfer stats
+            // Update wire transfer stats
             if (wireReceivedEl) {
                 wireReceivedEl.innerText = 
                     `$${Math.abs(totalWireReceivedAmount).toFixed(2)}`;
@@ -645,7 +644,7 @@
         }
 
 
-        // --- Calendar and Chart Rerender Logic (UPDATED) ---
+        // --- Calendar Rerender Logic (Fix maintained) ---
         
         function initializeCalendar(dailySummary) {
             if (typeof FullCalendar === 'undefined') {
@@ -708,34 +707,17 @@
                 }
             });
             
-            // Only render calendar if the tab is already active (default is active)
-            const calendarTab = document.getElementById('calendar-tab');
-            if(calendarTab && calendarTab.classList.contains('active')) {
-                calendarInstance.render();
+            // Fix: Force updateSize after initial render, as it is in a Bootstrap tab.
+            if (dailySummary.length > 0) {
+                 calendarInstance.render();
+                 setTimeout(() => {
+                     if (calendarInstance) {
+                        calendarInstance.updateSize();
+                     }
+                 }, 10); 
             }
         }
 
-        /**
-         * Generic function to handle redrawing elements inside inactive tabs.
-         */
-        function handleTabActivation(tabId) {
-            // Give the DOM a moment to complete the tab transition
-            setTimeout(() => {
-                if (tabId === 'calendar-tab') {
-                    if (calendarInstance) {
-                        calendarInstance.updateSize();
-                    } else if (dailyRealizedProfitData.length > 0) {
-                        // Re-initialize if for some reason it wasn't rendered on load
-                        initializeCalendar(dailyRealizedProfitData);
-                    }
-                } else if (tabId === 'chart-tab') {
-                    // Re-render the chart, which automatically resizes it
-                    if (dailyCashFlowData.length > 0) {
-                        renderAccountValueChart(dailyCashFlowData);
-                    }
-                }
-            }, 10);
-        }
 
         // --- Symbol Filter Population Logic ---
 
@@ -981,224 +963,3 @@
                                 Quantity: qtyMatch.toFixed(0), 
                                 OpenPrice: matchedBuy.Price.toFixed(2) 
                             });
-    
-                            if (qtyMatch === matchedBuy.Quantity) {
-                                openBuys.shift();
-                            } else {
-                                const remainingQuantity = matchedBuy.Quantity - qtyMatch;
-                                const originalQuantity = matchedBuy.Quantity;
-                                
-                                matchedBuy.Quantity = remainingQuantity;
-                                matchedBuy.Amount = (remainingQuantity / originalQuantity) * matchedBuy.Amount;
-                                
-                                qtyToClose = 0; 
-                                break; 
-                            }
-                            
-                            qtyToClose -= qtyMatch;
-                        }
-                        
-                        if (qtyToClose > 0) {
-                            const unmatchedProceeds = (qtyToClose / trade.Quantity) * trade.Amount;
-                            netProfitTotal += unmatchedProceeds;
-                            console.warn(`STC for ${rawSymbol} on ${dateKey} had ${qtyToClose} unmatched quantity. P&L absorbed into daily summary.`);
-                        }
-    
-                        tradePairs.push(...closedPairs);
-    
-                        if (netProfitTotal !== 0) {
-                            if (!dailyRealizedProfitMap.has(dateKey)) {
-                                dailyRealizedProfitMap.set(dateKey, 0);
-                            }
-                            dailyRealizedProfitMap.set(dateKey, dailyRealizedProfitMap.get(dateKey) + netProfitTotal);
-                        }
-                    } else {
-                        if (!dailyRealizedProfitMap.has(dateKey)) {
-                            dailyRealizedProfitMap.set(dateKey, 0);
-                        }
-                        dailyRealizedProfitMap.set(dateKey, dailyRealizedProfitMap.get(dateKey) + trade.Amount); 
-                    }
-                }
-            });
-
-            // 3. Final Summaries
-            const cashFlowSummary = Array.from(dailyCashMap).map(([dateString, profit]) => ({
-                Date: dateString, 
-                Profit: profit 
-            }));
-            
-            const realizedProfitSummary = Array.from(dailyRealizedProfitMap).map(([dateString, profit]) => ({
-                Date: dateString, 
-                Profit: profit 
-            }));
-            
-            const dateSorter = (a, b) => new Date(a.Date) - new Date(b.Date);
-            cashFlowSummary.sort(dateSorter);
-            realizedProfitSummary.sort(dateSorter);
-            
-            const uniqueSymbolsArray = Array.from(uniqueSymbolsSet).sort(); 
-
-            return {
-                tradePairs: tradePairs,
-                dailyCashFlowSummary: cashFlowSummary,        
-                dailyRealizedProfitSummary: realizedProfitSummary,
-                uniqueSymbols: uniqueSymbolsArray 
-            };
-        }
-
-
-        // --- CSV Parsing Logic (omitted for brevity, assume content is the same as previous step) ---
-        function parseCSV(csvContent) {
-            const lines = csvContent.trim().split('\n');
-            const headerLine = lines[0].trim();
-            const headers = (headerLine.match(/"([^"]*)"/g) || []).map(h => h.replace(/"/g, '').trim());
-
-            if (headers.length === 0) {
-                console.error("CSV header format error: Could not find quoted header fields.");
-                return [];
-            }
-            
-            const records = [];
-            for (let i = 1; i < lines.length; i++) {
-                const line = lines[i].trim();
-                if (!line) continue;
-
-                const valuesMatch = line.match(/"([^"]*)"/g); 
-                let rawValues = [];
-                
-                if (!valuesMatch || valuesMatch.length !== headers.length) {
-                    rawValues = line.split(',').map(v => v.trim());
-                    if (rawValues.length !== headers.length) {
-                        console.warn(`Skipping malformed row ${i + 1}. Header/Value count mismatch: ${line}`);
-                        continue;
-                    }
-                } else {
-                    rawValues = valuesMatch.map(v => v.replace(/"/g, '').trim());
-                }
-                
-                const record = {};
-                headers.forEach((header, index) => {
-                    let value = rawValues[index];
-
-                    switch (header) {
-                        case 'Date':
-                            record[header] = new Date(value);
-                            break;
-                        case 'Quantity':
-                        case 'Price':
-                        case 'Fees & Comm':
-                        case 'Amount':
-                            let cleanedValue = value.replace(/[$,]/g, '');
-                            record[header] = parseFloat(cleanedValue) || 0; 
-                            break;
-                        default:
-                            record[header] = value;
-                    }
-                });
-                records.push(record);
-            }
-            return records;
-        }
-
-
-        // --- DOM and Event Handling ---
-
-        document.addEventListener('DOMContentLoaded', () => {
-            const uploadButton = document.getElementById('uploadDataButton');
-            const fileInput = document.getElementById('fileInput');
-            const initialValueInput = document.getElementById('initial-value');
-            const symbolFilterInput = document.getElementById('symbolFilterInput'); 
-            
-            const tabButtons = document.querySelectorAll('#mainTabs button');
-
-            // 1. Tab Activation Listeners (NEW/UPDATED)
-            tabButtons.forEach(button => {
-                button.addEventListener('shown.bs.tab', (event) => {
-                    // event.target.dataset.bsTarget is the target tab pane ID (e.g., #chart-tab)
-                    const targetId = event.target.dataset.bsTarget.substring(1); 
-                    handleTabActivation(targetId);
-                });
-            });
-
-
-            // 2. File Upload Listener
-            if (uploadButton && fileInput) {
-                uploadButton.addEventListener('click', () => {
-                    fileInput.click();
-                });
-
-                fileInput.addEventListener('change', (event) => {
-                    const file = event.target.files[0];
-                    
-                    if (file) {
-                        if (!file.name.toLowerCase().endsWith('.csv') && !file.name.toLowerCase().endsWith('.txt')) {
-                            showMessage('Please upload a CSV or TXT file.');
-                            event.target.value = null; 
-                            return;
-                        }
-                        
-                        const reader = new FileReader();
-
-                        reader.onload = (e) => {
-                            const rawContent = e.target.result;
-                            const parsedData = parseCSV(rawContent);
-                            
-                            if (parsedData.length > 0) {
-                                financialData = parsedData; 
-                                
-                                const { tradePairs, dailyCashFlowSummary, dailyRealizedProfitSummary, uniqueSymbols } = calculateDailyProfit(financialData);
-                                
-                                dailyCashFlowData = dailyCashFlowSummary; 
-                                dailyRealizedProfitData = dailyRealizedProfitSummary;
-                                tradePairsData = tradePairs; 
-                                aggregatedTradePairsData = aggregateTradePairs(tradePairsData); 
-                                uniqueTradeSymbols = uniqueSymbols; 
-                                
-                                // RENDER ALL CONTENT
-                                initializeCalendar(dailyRealizedProfitData); 
-                                // Chart is initialized/rendered on its tab selection
-                                renderSummaryStats(dailyRealizedProfitData, financialData); 
-                                
-                                populateSymbolFilter(uniqueTradeSymbols);
-                                renderTradesTable(aggregatedTradePairsData, symbolFilterInput ? symbolFilterInput.value : '');
-                                
-                                showMessage(`Successfully processed ${financialData.length} records. Dashboard updated.`);
-                                
-                            } else {
-                                showMessage("Failed to parse data. Please check the file format.");
-                            }
-                        };
-
-                        reader.readAsText(file);
-                    }
-                });
-            }
-
-            // 3. Initial Value Change Listener
-            if (initialValueInput) {
-                initialValueInput.addEventListener('change', () => {
-                    renderSummaryStats(dailyRealizedProfitData, financialData); 
-                    
-                    // If the chart tab is active, force a rerender
-                    const chartTab = document.getElementById('chart-tab');
-                    if (chartTab && chartTab.classList.contains('active') && dailyCashFlowData.length > 0) {
-                        renderAccountValueChart(dailyCashFlowData);
-                    }
-                });
-            }
-
-            // 4. Symbol Filter Listener
-            if (symbolFilterInput) {
-                symbolFilterInput.addEventListener('change', () => {
-                    renderTradesTable(aggregatedTradePairsData, symbolFilterInput.value); 
-                });
-            }
-
-            // Initial render of stats with default value
-            renderSummaryStats([], []);
-            renderTradesTable([], ''); 
-        });
-    </script>
-</body>
-
-</html>
