@@ -264,16 +264,21 @@
 <div class="row g-4 mb-4">
     <div class="col-lg-12">
         <div class="card p-4 h-100 d-flex flex-column">
+            <h5 class="card-title text-center text-white mb-3">Account Value Over Time (Daily Cash Flow)</h5>
+            <div class="chart-container flex-grow-1 mb-3">
+                <canvas id="accountValueChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row g-4 mb-4">
+    <div class="col-lg-12">
+        <div class="card p-4 h-100 d-flex flex-column">
             
             <ul class="nav nav-tabs nav-justified mb-3" id="mainTabs" role="tablist">
                 <li class="nav-item" role="presentation">
                     <button class="nav-link active" id="calendar-tab-btn" data-bs-toggle="tab" data-bs-target="#calendar-tab" type="button" role="tab" aria-controls="calendar-tab" aria-selected="true">
                         Daily P&L Calendar
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="chart-tab-btn" data-bs-toggle="tab" data-bs-target="#chart-tab" type="button" role="tab" aria-controls="chart-tab" aria-selected="false">
-                        Account Value Chart
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
@@ -295,12 +300,6 @@
                     <div id="calendar"></div>
                 </div>
 
-                <div class="tab-pane fade h-100" id="chart-tab" role="tabpanel" aria-labelledby="chart-tab-btn">
-                    <h5 class="card-title text-center text-white mb-3">Account Value Over Time (Daily Cash Flow)</h5>
-                    <div class="chart-container flex-grow-1 mb-3">
-                        <canvas id="accountValueChart"></canvas>
-                    </div>
-                </div>
                 <div class="tab-pane fade h-100" id="trades-tab" role="tabpanel" aria-labelledby="trades-tab-btn">
                     <h5 class="card-title text-white mb-3">Closed Trade History (Consolidated)</h5>
                     
@@ -562,4 +561,405 @@
             avgDailyPercentGainElement.innerText = 
                 `${avgDailyPercentGain >= 0 ? '+' : ''}${Math.abs(avgDailyPercentGain).toFixed(2)}%`;
             avgDailyPercentGainElement.classList.remove('text-success', 'text-danger');
-            avgDailyPercentGainElement.classList.add(avgDailyPercentGain >= 0 ? 'text-success' : 'text-danger
+            avgDailyPercentGainElement.classList.add(avgDailyPercentGain >= 0 ? 'text-success' : 'text-danger');
+			
+            // Update wire transfer stats
+            if (wireReceivedEl) {
+                wireReceivedEl.innerText = 
+                    `$${Math.abs(totalWireReceivedAmount).toFixed(2)}`;
+            }
+            if (wireSentEl) {
+                wireSentEl.innerText = 
+                    `$${Math.abs(totalWireSentAmount).toFixed(2)}`; 
+            }
+        }
+
+
+        /**
+         * Calculates cumulative balance and renders the Chart.js Bar Chart.
+         */
+        function renderAccountValueChart(data) {
+            const initialValueInput = document.getElementById('initial-value');
+            const initialValue = parseFloat(initialValueInput.value);
+
+            if (isNaN(initialValue) || initialValue < 0) {
+                initialValueInput.value = 0;
+                return; 
+            }
+            
+            let labels = [];
+            let dataPoints = [];
+            let runningBalance = initialValue;
+
+            data.forEach(day => {
+                labels.push(day.Date); 
+                const dailyCashChange = parseFloat(day.Profit); 
+                
+                runningBalance += dailyCashChange; 
+                dataPoints.push(runningBalance);
+            });
+            
+            // Destroy existing chart to prevent redraw issues
+            if (accountValueChart) {
+                accountValueChart.destroy();
+            }
+
+            const canvasElement = document.getElementById('accountValueChart');
+            if (!canvasElement) return;
+
+            const ctx = canvasElement.getContext('2d');
+            accountValueChart = new Chart(ctx, {
+                type: 'bar', 
+                data: {
+                    labels: labels, 
+                    datasets: [{
+                        label: 'Total Account Value ($)',
+                        data: dataPoints, 
+                        backgroundColor: dataPoints.map(val => val >= initialValue ? CHART_PROFIT_COLOR_RGB : CHART_LOSS_COLOR_RGB),
+                        borderColor: dataPoints.map(val => val >= initialValue ? CHART_PROFIT_COLOR_HEX : CHART_LOSS_COLOR_HEX),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            title: { display: true, text: 'Account Value ($)', color: 'white' },
+                            ticks: { color: 'white' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        },
+                        x: {
+                            ticks: { color: 'white' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        }
+                    },
+                    plugins: {
+                        legend: { labels: { color: 'white' } },
+                        title: { display: false } 
+                    }
+                }
+            });
+        }
+
+
+        // --- Calendar Rerender Logic (Fix maintained) ---
+        
+        function initializeCalendar(dailySummary) {
+            if (typeof FullCalendar === 'undefined') {
+                console.warn("FullCalendar library is not loaded. Cannot initialize calendar.");
+                return;
+            }
+
+            const calendarEl = document.getElementById('calendar');
+
+            if (calendarInstance) {
+                calendarInstance.destroy();
+                calendarInstance = null;
+            }
+
+            const events = [];
+            const dayCellClasses = {}; 
+
+            dailySummary.forEach(day => {
+                const profit = parseFloat(day.Profit);
+                const isProfit = profit > 0;
+                const isLoss = profit < 0;
+                const calendarDate = day.Date; 
+
+                events.push({
+                    title: `${isProfit ? '+' : ''}$${Math.abs(profit).toFixed(2)}`,
+                    start: calendarDate,
+                    allDay: true, 
+                    classNames: isProfit ? ['event-profit'] : (isLoss ? ['event-loss'] : ['event-neutral']),
+                    extendedProps: {
+                        netAmount: profit
+                    }
+                });
+
+                if (isProfit) {
+                    dayCellClasses[calendarDate] = 'fc-day-profit';
+                } else if (isLoss) {
+                    dayCellClasses[calendarDate] = 'fc-day-loss';
+                }
+            });
+            
+            calendarInstance = new FullCalendar.Calendar(calendarEl, {
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth'
+                }, 
+                initialDate: events.length > 0 ? events[0].start : new Date(), 
+                navLinks: true,
+                editable: false,
+                selectable: true,
+                themeSystem: 'bootstrap5',
+                weekends: false,
+                events: events,
+                dayCellDidMount: function(info) {
+                    const dateKey = formatDateToKey(info.date);
+                    const classToAdd = dayCellClasses[dateKey];
+                    if (classToAdd) {
+                        info.el.classList.add(classToAdd);
+                    }
+                }
+            });
+            
+            // Fix: Force updateSize after initial render, as it is in a Bootstrap tab.
+            if (dailySummary.length > 0) {
+                 calendarInstance.render();
+                 setTimeout(() => {
+                     if (calendarInstance) {
+                        calendarInstance.updateSize();
+                     }
+                 }, 10); 
+            }
+        }
+
+
+        // --- Symbol Filter Population Logic ---
+
+        function populateSymbolFilter(symbols) {
+            const selectElement = document.getElementById('symbolFilterInput');
+            if (!selectElement) return;
+
+            selectElement.innerHTML = '<option value="">All Symbols</option>';
+
+            symbols.forEach(symbol => {
+                const option = document.createElement('option');
+                option.value = symbol;
+                option.textContent = symbol;
+                selectElement.appendChild(option);
+            });
+            selectElement.value = ""; 
+        }
+
+        // --- Trade Table Rendering Logic ---
+
+        function renderTradesTable(tradeGroups, filterText = '') {
+            const tbody = document.getElementById('tradesTableBody');
+            if (!tbody) return;
+
+            tbody.innerHTML = ''; 
+            
+            const normalizedFilter = cleanSymbol(filterText).toUpperCase();
+            
+            const filteredGroups = tradeGroups.filter(group => {
+                if (!normalizedFilter) return true; 
+                
+                const cleanedGroupSymbol = cleanSymbol(group.Symbol).toUpperCase();
+                
+                return cleanedGroupSymbol === normalizedFilter; 
+            });
+
+            if (filteredGroups.length === 0) {
+                 const row = tbody.insertRow();
+                 row.innerHTML = `<td colspan="9" class="text-center text-muted">No closed trade groups match your criteria.</td>`;
+                 return;
+            }
+
+            filteredGroups.forEach(group => {
+                const profit = parseFloat(group.TotalNetProfit);
+                const avgOpenPrice = parseFloat(group.AvgOpenPrice);
+                const avgClosePrice = parseFloat(group.AvgClosePrice);
+                
+                let percentGain = 0;
+                if (group.TotalCostBasis > 0) {
+                    // Use TotalCostBasis calculated during aggregation
+                    percentGain = (profit / group.TotalCostBasis) * 100;
+                }
+                
+                const isProfit = profit > 0;
+                
+                let statusText = 'Break-Even';
+                let statusBgClass = 'text-bg-secondary'; 
+
+                if (isProfit) {
+                    statusText = 'Win';
+                    statusBgClass = 'text-bg-info'; 
+                } else if (profit < 0) {
+                    statusText = 'Loss';
+                    statusBgClass = 'text-bg-danger'; 
+                }
+
+                const statusBadgeHtml = `<span class="badge ${statusBgClass} rounded px-3 py-1">${statusText}</span>`;
+                
+                const profitText = `${profit >= 0 ? '+' : ''}$${Math.abs(profit).toFixed(2)}`;
+                
+                const percentText = `${percentGain >= 0 ? '+' : ''}${percentGain.toFixed(2)}%`;
+                
+                const row = tbody.insertRow();
+                const profitClass = isProfit ? 'text-info' : (profit < 0 ? 'text-danger' : 'text-secondary');
+                
+                row.innerHTML = `
+                    <td>${group.Symbol}</td>
+                    <td>${group.MinOpenDate}</td>
+                    <td>${group.MaxCloseDate}</td>
+                    <td>${group.TotalQuantity}</td>
+                    <td class="text-end">$${avgOpenPrice.toFixed(2)}</td>
+                    <td class="text-end">$${avgClosePrice.toFixed(2)}</td>
+                    <td class="text-center">${statusBadgeHtml}</td>
+                    <td class="text-end ${profitClass}">${profitText}</td>
+                    <td class="text-end ${profitClass}">${percentText}</td>
+                `;
+            });
+        }
+
+
+        /**
+         * Aggregates trade pairs by their full contract Symbol to consolidate entries.
+         */
+        function aggregateTradePairs(tradePairs) {
+            const aggregatedMap = new Map();
+
+            tradePairs.forEach(pair => {
+                const symbol = pair.Symbol;
+                const quantity = parseFloat(pair.Quantity);
+                const netProfit = parseFloat(pair.NetProfit);
+                const openAmount = Math.abs(parseFloat(pair.OpenAmount)); 
+                const openDate = pair.OpenDate;
+                const closeDate = pair.CloseDate;
+
+                if (!aggregatedMap.has(symbol)) {
+                    aggregatedMap.set(symbol, {
+                        Symbol: symbol,
+                        MinOpenDate: openDate,
+                        MaxCloseDate: closeDate,
+                        TotalQuantity: 0,
+                        TotalNetProfit: 0,
+                        TotalCostBasis: 0, 
+                    });
+                }
+
+                const group = aggregatedMap.get(symbol);
+
+                // 1. Accumulate totals
+                group.TotalQuantity += quantity;
+                group.TotalNetProfit += netProfit;
+                group.TotalCostBasis += openAmount;
+
+                // 2. Track Min/Max Dates
+                if (openDate < group.MinOpenDate) {
+                    group.MinOpenDate = openDate;
+                }
+                if (closeDate > group.MaxCloseDate) {
+                    group.MaxCloseDate = closeDate;
+                }
+            });
+
+            // 3. Final calculations for Average Prices
+            const aggregatedArray = Array.from(aggregatedMap.values()).map(group => {
+                
+                const totalProceeds = group.TotalCostBasis + group.TotalNetProfit;
+                
+                group.AvgOpenPrice = group.TotalQuantity > 0 ? (group.TotalCostBasis / group.TotalQuantity) : 0;
+                
+                group.AvgClosePrice = group.TotalQuantity > 0 ? (totalProceeds / group.TotalQuantity) : 0;
+                
+                return group;
+            });
+
+            aggregatedArray.sort((a, b) => new Date(b.MaxCloseDate) - new Date(a.MaxCloseDate));
+
+            return aggregatedArray;
+        }
+
+
+        // --- Profit/Transfer Calculation Logic (Trade Matching) ---
+
+        function calculateDailyProfit(data) {
+            const dailyCashMap = new Map();
+            const dailyRealizedProfitMap = new Map();
+            const tradePairs = [];
+            const uniqueSymbolsSet = new Set(); 
+			
+            totalWireReceivedAmount = 0; 
+            totalWireSentAmount = 0;
+
+            // 1. Build the Daily Cash Flow Summary (For Account Chart)
+            data.forEach(transaction => {
+                const dateKey = formatDateToKey(transaction.Date);
+                const amount = transaction.Amount; 
+                
+                if (transaction.Action === 'Wire Received') {
+                    totalWireReceivedAmount += amount;
+                } else if (transaction.Action === 'Wire Sent') {
+                    totalWireSentAmount += amount; 
+                }
+				 
+
+                if (!dailyCashMap.has(dateKey)) {
+                    dailyCashMap.set(dateKey, 0);
+                }
+                dailyCashMap.set(dateKey, dailyCashMap.get(dateKey) + amount);
+            });
+
+            // 2. Process Trades (Matching BTO and STC for Realized P&L)
+            const trades = data.filter(d => 
+                (d.Action === 'Buy to Open' || d.Action === 'Sell to Close') && d.Symbol
+            );
+
+            // Sort by date/time, then BTO before STC
+            trades.sort((a, b) => {
+                const dateDiff = a.Date.getTime() - b.Date.getTime();
+                if (dateDiff !== 0) {
+                    return dateDiff;
+                }
+                if (a.Action === 'Buy to Open' && b.Action === 'Sell to Close') {
+                    return -1;
+                }
+                if (a.Action === 'Sell to Close' && b.Action === 'Buy to Open') {
+                    return 1;
+                }
+                return 0; 
+            });
+            
+            const unmatchedBuys = {}; 
+            
+            trades.forEach(trade => {
+                const dateKey = formatDateToKey(trade.Date);
+                const rawSymbol = trade.Symbol;
+                
+                const cleanSymbolKey = cleanSymbol(rawSymbol);
+                uniqueSymbolsSet.add(cleanSymbolKey);
+
+                const tradeMatchKey = rawSymbol; 
+
+                if (!unmatchedBuys[tradeMatchKey]) {
+                    unmatchedBuys[tradeMatchKey] = [];
+                }
+
+                if (trade.Action === 'Buy to Open') {
+                    unmatchedBuys[tradeMatchKey].push(trade);
+                } else if (trade.Action === 'Sell to Close') {
+                    
+                    const openBuys = unmatchedBuys[tradeMatchKey];
+                    
+                    if (openBuys && openBuys.length > 0) {
+
+                        let qtyToClose = trade.Quantity; 
+                        let netProfitTotal = 0; 
+                        let closedPairs = []; 
+    
+                        while (qtyToClose > 0 && openBuys.length > 0) {
+                            const matchedBuy = openBuys[0]; 
+                            
+                            const qtyMatch = Math.min(qtyToClose, matchedBuy.Quantity);
+                            
+                            const proRataCost = (qtyMatch / matchedBuy.Quantity) * matchedBuy.Amount; 
+                            const proRataProceeds = (qtyMatch / trade.Quantity) * trade.Amount;
+                            
+                            const netProfitMatch = proRataCost + proRataProceeds;
+                            netProfitTotal += netProfitMatch;
+                            
+                            closedPairs.push({
+                                OpenDate: formatDateToKey(matchedBuy.Date),
+                                CloseDate: dateKey,
+                                Symbol: rawSymbol, 
+                                NetProfit: netProfitMatch.toFixed(2),
+                                OpenAmount: proRataCost.toFixed(2), 
+                                Quantity: qtyMatch.toFixed(0), 
+                                OpenPrice: matchedBuy.Price.toFixed(2) 
+                            });
