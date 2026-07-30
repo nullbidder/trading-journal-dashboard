@@ -24,6 +24,20 @@
             --color-win: #89CFF0; /* Baby Blue */
             --color-loss: #BF55EC; /* Bright Purple */
         }
+        
+        /* Force loss elements to purple */
+.text-loss, 
+.text-danger {
+    color: var(--color-loss) !important;
+}
+
+/* Force win elements to baby blue */
+.text-win, 
+.text-info, 
+.text-success {
+    color: var(--color-win) !important;
+}
+
 
         .text-win {
             color: var(--color-win) !important;
