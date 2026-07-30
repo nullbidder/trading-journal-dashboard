@@ -9,21 +9,34 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/6.1.11/main.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
     
-<style>
+    <style>
         /* Custom Dark Theme Styles */
         :root {
             --bs-body-bg: #212529; /* Dark background */
             --bs-body-color: #f8f9fa; /* Light text */
             --bs-card-bg: #2d3135; /* Slightly lighter dark card background */
             --bs-border-color: #a96094;
-            --fc-bg-event-profit: #344252; /* Darker Blue/Grey for Profit */
-            --fc-bg-event-loss: #ff5c5c; /* BRIGHT RED for Loss */
+            --fc-bg-event-profit: #3a8ebd; /* Darker Baby Blue for Event */
+            --fc-bg-event-loss: #702963; /* Darker Purple for Loss */
             --fc-text-color: #f8f9fa;
-	 
+            
+            /* Custom Win/Loss Theme Colors */
+            --color-win: #89CFF0; /* Baby Blue */
+            --color-loss: #BF55EC; /* Bright Purple */
         }
-.fc-h-event .fc-event-main {
-    color: #0dcaf0b3;
-}
+
+        .text-win {
+            color: var(--color-win) !important;
+        }
+
+        .text-loss {
+            color: var(--color-loss) !important;
+        }
+
+        .fc-h-event .fc-event-main {
+            color: #ffffff;
+        }
+
         body {
             background-color: var(--bs-body-bg) !important;
             color: var(--bs-body-color) !important;
@@ -31,17 +44,16 @@
             padding: 20px;
         }
 
+        .text-bg-info {
+            color: #000 !important;
+            background-color: var(--color-win) !important;
+        }
 
-		.text-bg-info {
-			color: #000 !important;
-			background-color: rgb(143 198 200) !important;
-		}
-
-		.text-bg-danger {
-			color: #fff !important;
-			background-color: rgb(139 38 38) !important;   
-		}
-			
+        .text-bg-danger {
+            color: #fff !important;
+            background-color: #6a0ded !important; /* Deep Purple Badge */
+        }
+            
         /* Apply dark theme to standard Bootstrap components */
         .card {
             background-color: var(--bs-card-bg);
@@ -60,21 +72,21 @@
         .form-control:focus, .form-select:focus {
             background-color: #3b4045;
             color: var(--bs-body-color);
-            border-color: #2bfbfc;
-            box-shadow: 0 0 0 0.25rem rgba(43, 251, 252, 0.25);
+            border-color: #89CFF0;
+            box-shadow: 0 0 0 0.25rem rgba(137, 207, 240, 0.25);
         }
         
         /* Custom Tabs Styling */
         .nav-tabs .nav-link {
-            color: var(--bs-body-color); /* Tab text color */
+            color: var(--bs-body-color);
             border-color: var(--bs-border-color);
-            background-color: var(--bs-card-bg); /* Tab background color */
+            background-color: var(--bs-card-bg);
         }
 
         .nav-tabs .nav-link.active {
-            color: #2bfbfc; /* Active tab text color */
-            background-color: #3b4045; /* Active tab background color */
-            border-color: #2bfbfc #2bfbfc #3b4045; /* Highlight border */
+            color: var(--color-win);
+            background-color: #3b4045;
+            border-color: var(--color-win) var(--color-win) #3b4045;
         }
 
         /* FullCalendar Custom Theming */
@@ -103,11 +115,9 @@
             color: #fff; 
         }
         
-        /* === NEW: Explicitly set event title color to white for loss days === */
         .event-loss .fc-event-main {
             color: #fff; 
         }
-        /* =================================================================== */
 
         .event-neutral {
             background-color: #495057;
@@ -115,42 +125,38 @@
             color: var(--fc-text-color);
         }
 
-        /* --- Full Day Background Coloring --- */
-
         /* Dim non-month days for visual clarity */
         .fc .fc-day-other {
             opacity: 0.7; 
         }
    
-.fc-theme-standard td, .fc-theme-standard th {
-    border: 1px solid #a96094;
-}
+        .fc-theme-standard td, .fc-theme-standard th {
+            border: 1px solid #a96094;
+        }
        
-        /* Profit Day Background */
-.fc-day-profit {
-    background-color: #495057;
-}
-        
-        /* Loss Day Background */
-        .fc-day-loss {
-            /* Lighter version of loss color for background */
-            background-color: rgba(255, 92, 92, 0.15) !important; 
+        /* Profit Day Background (Baby Blue tint) */
+        .fc-day-profit {
+            background-color: rgba(137, 207, 240, 0.15) !important;
         }
         
-        /* --- END NEW CALENDAR STYLES --- */
+        /* Loss Day Background (Purple tint) */
+        .fc-day-loss {
+            background-color: rgba(160, 32, 240, 0.2) !important; 
+        }
 
-.fc-h-event .fc-event-title {
-    display: inline-block;
-    left: 0px;
-    max-width: 100%;
-    overflow: hidden;
-    right: 0px;
-    vertical-align: top;
-    font-size: 22px;
-    align-items: center;
-    text-align: center;
-}
-        /* Message Box Styling (Replacement for alert()) */
+        .fc-h-event .fc-event-title {
+            display: inline-block;
+            left: 0px;
+            max-width: 100%;
+            overflow: hidden;
+            right: 0px;
+            vertical-align: top;
+            font-size: 22px;
+            align-items: center;
+            text-align: center;
+        }
+
+        /* Message Box Styling */
         #messageBox {
             position: fixed;
             top: 20px;
@@ -158,11 +164,11 @@
             z-index: 1050;
             padding: 15px 25px;
             border-radius: 6px;
-            background-color: #2bfbfc;
+            background-color: #89CFF0;
             color: black;
-            box-shadow: 0 0 15px rgba(43, 251, 252, 0.5);
+            box-shadow: 0 0 15px rgba(137, 207, 240, 0.5);
             font-weight: bold;
-            display: none; /* Initially hidden */
+            display: none;
             transition: opacity 0.3s ease-in-out;
         }
 
@@ -186,7 +192,7 @@
             <div class="col-md-3">
                 <div class="card p-3 text-center">
                     <div class="text-secondary small">Current Account Value</div>
-                    <div class="h3 mb-0 text-success" id="stat-current-value">$42.66</div>
+                    <div class="h3 mb-0 text-win" id="stat-current-value">$42.66</div>
                 </div>
             </div>
             <div class="col-md-3">
@@ -198,14 +204,14 @@
             <div class="col-md-3">
                 <div class="card p-3 text-center">
                     <div class="text-secondary small">Avg Daily Gain (PNL)</div>
-                    <div class="h3 mb-0 text-success" id="stat-avg-gain-pnl">$0.00</div>
+                    <div class="h3 mb-0 text-win" id="stat-avg-gain-pnl">$0.00</div>
                     <div class="small" id="stat-avg-gain-percent">0.00%</div>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="card p-3 text-center">
                     <div class="text-secondary small">Avg Daily Loss (PNL)</div>
-                    <div class="h3 mb-0 text-danger" id="stat-avg-loss-pnl">$0.00</div>
+                    <div class="h3 mb-0 text-loss" id="stat-avg-loss-pnl">$0.00</div>
                     <div class="small" id="stat-avg-loss-percent">0.00%</div>
                 </div>
             </div>
@@ -223,13 +229,13 @@
             <div class="col-md-3">
                 <div class="card p-3 text-center">
                     <div class="text-secondary small">Total Gross Profit</div>
-                    <div class="h3 mb-0 text-info" id="stat-gross-profit">$0.00</div> 
+                    <div class="h3 mb-0 text-win" id="stat-gross-profit">$0.00</div> 
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="card p-3 text-center">
                     <div class="text-secondary small">Total Gross Loss</div>
-                    <div class="h3 mb-0 text-danger" id="stat-gross-loss">$0.00</div>
+                    <div class="h3 mb-0 text-loss" id="stat-gross-loss">$0.00</div>
                 </div>
             </div>
             <div class="col-md-3">
@@ -250,155 +256,142 @@
             <div class="col-md-6">
                 <div class="card p-3 text-center">
                     <div class="text-secondary small">Total Wire Transfer Received</div>
-                    <div class="h3 mb-0 text-success" id="stat-wire-received">$0.00</div> 
+                    <div class="h3 mb-0 text-win" id="stat-wire-received">$0.00</div> 
                 </div>
             </div>
             <div class="col-md-6">
                 <div class="card p-3 text-center">
                     <div class="text-secondary small">Total Wire Transfer Sent</div>
-                    <div class="h3 mb-0 text-danger" id="stat-wire-sent">$0.00</div>
+                    <div class="h3 mb-0 text-loss" id="stat-wire-sent">$0.00</div>
                 </div>
             </div>
         </div>
 						 
-<div class="row g-4 mb-4">
-    <div class="col-lg-6" id="chart-column">
-		    <button id="toggleRightPanelButton" class="btn btn-secondary w-100 mt-auto" type="button">
-                Hide Right Panel (Charts Only View)
-            </button>
-        <div class="card p-4 h-100 d-flex flex-column">
-            <h5 class="card-title text-center text-white mb-3">Account Value Over Time (Daily Cash Flow)</h5>
-            <div class="chart-container flex-grow-1 mb-3">
-                <canvas id="accountValueChart"></canvas>
-            </div>
-            
-
-            </div>
-    </div>
-
-<div class="col-lg-6" id="right-panel-tabs">
-        <div class="card p-4 h-100 d-flex flex-column">
-            
-            <ul class="nav nav-tabs nav-justified mb-3" id="mainTabs" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="calendar-tab-btn" data-bs-toggle="tab" data-bs-target="#calendar-tab" type="button" role="tab" aria-controls="calendar-tab" aria-selected="true" onclick="ensureCalendarRerender()">
-                        Daily P&L Calendar
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="trades-tab-btn" data-bs-toggle="tab" data-bs-target="#trades-tab" type="button" role="tab" aria-controls="trades-tab" aria-selected="false">
-                        Closed Trade History
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="settings-tab-btn" data-bs-toggle="tab" data-bs-target="#settings-tab" type="button" role="tab" aria-controls="settings-tab" aria-selected="false">
-                        Settings & Data
-                    </button>
-                </li>
-            </ul>
-            
-            <div class="tab-content" id="mainTabsContent" style="flex-grow: 1;">
-                
-                <div class="tab-pane fade show active h-100" id="calendar-tab" role="tabpanel" aria-labelledby="calendar-tab-btn">
-                    <h5 class="card-title text-center text-white mb-3">Daily Realized P&L Calendar</h5>
-                    <div id="calendar"></div>
-                </div>
-                
-                <div class="tab-pane fade h-100" id="trades-tab" role="tabpanel" aria-labelledby="trades-tab-btn">
-                    <h5 class="card-title text-white mb-3">Closed Trade History (Consolidated)</h5>
-                    
-                    <div class="mb-3">
-                        <label for="symbolFilterInput" class="form-label text-secondary small">Filter by Symbol:</label>
-                        <select class="form-select" id="symbolFilterInput">
-                            <option value="">All Symbols</option>
-                            </select>
-                    </div>
-                    <div class="table-responsive" style="height: calc(100% - 130px); overflow-y: auto;">
-                        <table class="table table-dark table-striped table-hover rounded-3">
-                            <thead>
-                                <tr>
-                                    <th scope="col">Symbol</th>
-                                    <th scope="col">Open Date</th>
-                                    <th scope="col">Close Date</th>
-                                    <th scope="col">Quantity</th>
-                                    <th scope="col" class="text-end">Avg Open Price</th>
-                                    <th scope="col" class="text-end">Avg Close Price</th>
-                                    <th scope="col" class="text-center">Status</th> 
-                                    <th scope="col" class="text-end">Net Profit / Loss ($)</th>
-                                    <th scope="col" class="text-end">% Gain / Loss</th> 
-                                </tr>
-                            </thead>
-                            <tbody id="tradesTableBody" style="font-size: 29px;">
-
-                                <tr>
-                                    <td colspan="9" class="text-center text-muted">Upload data to view trade history.</td>
-                                </tr>
-                            </tbody>
-                        </table>
+        <div class="row g-4 mb-4">
+            <div class="col-lg-6" id="chart-column">
+                <button id="toggleRightPanelButton" class="btn btn-secondary w-100 mt-auto" type="button">
+                    Hide Right Panel (Charts Only View)
+                </button>
+                <div class="card p-4 h-100 d-flex flex-column">
+                    <h5 class="card-title text-center text-white mb-3">Account Value Over Time (Daily Cash Flow)</h5>
+                    <div class="chart-container flex-grow-1 mb-3">
+                        <canvas id="accountValueChart"></canvas>
                     </div>
                 </div>
+            </div>
 
-                <div class="tab-pane fade h-100" id="settings-tab" role="tabpanel" aria-labelledby="settings-tab-btn">
-                    <h5 class="card-title text-white mb-4">Data Management</h5>
+            <div class="col-lg-6" id="right-panel-tabs">
+                <div class="card p-4 h-100 d-flex flex-column">
                     
-                    <div class="mb-4">
-                        <label for="initial-value" class="form-label">Set Initial Account Value ($)</label>
-                        <input type="number" class="form-control" id="initial-value" value="42.66" min="0" step="100">
-                        <small class="form-text text-muted">This value is the starting point for your Account Value Chart.</small>
-                    </div>
+                    <ul class="nav nav-tabs nav-justified mb-3" id="mainTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="calendar-tab-btn" data-bs-toggle="tab" data-bs-target="#calendar-tab" type="button" role="tab" aria-controls="calendar-tab" aria-selected="true" onclick="ensureCalendarRerender()">
+                                Daily P&L Calendar
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="trades-tab-btn" data-bs-toggle="tab" data-bs-target="#trades-tab" type="button" role="tab" aria-controls="trades-tab" aria-selected="false">
+                                Closed Trade History
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="settings-tab-btn" data-bs-toggle="tab" data-bs-target="#settings-tab" type="button" role="tab" aria-controls="settings-tab" aria-selected="false">
+                                Settings & Data
+                            </button>
+                        </li>
+                    </ul>
                     
-                    <div class="mb-4">
-                        <label class="form-label">Upload Trade Data</label>
-                        <input type="file" id="fileInput" accept=".csv, .txt" class="d-none">
-                        <button id="uploadDataButton" class="btn btn-primary w-100" type="button" >
-                            Upload Trades(.csv)
-                        </button>
-                        <small class="form-text text-muted">Upload a new CSV file to load and process trade history.</small>
-                    </div>
+                    <div class="tab-content" id="mainTabsContent" style="flex-grow: 1;">
+                        
+                        <div class="tab-pane fade show active h-100" id="calendar-tab" role="tabpanel" aria-labelledby="calendar-tab-btn">
+                            <h5 class="card-title text-center text-white mb-3">Daily Realized P&L Calendar</h5>
+                            <div id="calendar"></div>
+                        </div>
+                        
+                        <div class="tab-pane fade h-100" id="trades-tab" role="tabpanel" aria-labelledby="trades-tab-btn">
+                            <h5 class="card-title text-white mb-3">Closed Trade History (Consolidated)</h5>
+                            
+                            <div class="mb-3">
+                                <label for="symbolFilterInput" class="form-label text-secondary small">Filter by Symbol:</label>
+                                <select class="form-select" id="symbolFilterInput">
+                                    <option value="">All Symbols</option>
+                                </select>
+                            </div>
+                            <div class="table-responsive" style="height: calc(100% - 130px); overflow-y: auto;">
+                                <table class="table table-dark table-striped table-hover rounded-3">
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">Symbol</th>
+                                            <th scope="col">Open Date</th>
+                                            <th scope="col">Close Date</th>
+                                            <th scope="col">Quantity</th>
+                                            <th scope="col" class="text-end">Avg Open Price</th>
+                                            <th scope="col" class="text-end">Avg Close Price</th>
+                                            <th scope="col" class="text-center">Status</th> 
+                                            <th scope="col" class="text-end">Net Profit / Loss ($)</th>
+                                            <th scope="col" class="text-end">% Gain / Loss</th> 
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tradesTableBody" style="font-size: 1rem;">
+                                        <tr>
+                                            <td colspan="9" class="text-center text-muted">Upload data to view trade history.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
 
-                    <div class="text-center mt-5 p-3 text-muted border-top border-secondary">
-                        Note: Changing settings or uploading new data will re-render all charts and statistics.
+                        <div class="tab-pane fade h-100" id="settings-tab" role="tabpanel" aria-labelledby="settings-tab-btn">
+                            <h5 class="card-title text-white mb-4">Data Management</h5>
+                            
+                            <div class="mb-4">
+                                <label for="initial-value" class="form-label">Set Initial Account Value ($)</label>
+                                <input type="number" class="form-control" id="initial-value" value="42.66" min="0" step="100">
+                                <small class="form-text text-muted">This value is the starting point for your Account Value Chart.</small>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label class="form-label">Upload Trade Data</label>
+                                <input type="file" id="fileInput" accept=".csv, .txt" class="d-none">
+                                <button id="uploadDataButton" class="btn btn-primary w-100" type="button">
+                                    Upload Trades(.csv)
+                                </button>
+                                <small class="form-text text-muted">Upload a new CSV file to load and process trade history.</small>
+                            </div>
+
+                            <div class="text-center mt-5 p-3 text-muted border-top border-secondary">
+                                Note: Changing settings or uploading new data will re-render all charts and statistics.
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/6.1.11/index.global.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-
     <script>
-        /**
-         * script.js
-         * Handles file input, reading, data processing, profit calculation, calendar, 
-         * and Chart.js chart rendering.
-         */
- 
         // --- Global Variables ---
         let financialData = [];      
         let dailyCashFlowData = [];  
         let dailyRealizedProfitData = []; 
         let tradePairsData = [];     
-        let aggregatedTradePairsData = []; // NEW: Consolidated data
+        let aggregatedTradePairsData = []; 
         let uniqueTradeSymbols = []; 
         let accountValueChart;       
         let calendarInstance;        
         let messageBoxTimeout;       
 
         let totalWireReceivedAmount = 0;
-        let totalWireSentAmount = 0;															   
-										
-									
+        let totalWireSentAmount = 0;
 
-        // --- Chart Color Constants ---
-        const CHART_PROFIT_COLOR_HEX = '#343535'; 
-        const CHART_PROFIT_COLOR_RGB = 'rgba(148, 215, 169, 0.7)'; 
-        const CHART_LOSS_COLOR_HEX = '#343535'; 
-        const CHART_LOSS_COLOR_RGB = 'rgba(255, 92, 92, 0.7)';
-
-        // --- Message Box (Replaces alert()) ---
+        // --- Chart Color Constants (Baby Blue for Win, Purple for Loss) ---
+        const CHART_PROFIT_COLOR_HEX = '#89CFF0'; 
+        const CHART_PROFIT_COLOR_RGB = 'rgba(137, 207, 240, 0.7)'; 
+        const CHART_LOSS_COLOR_HEX = '#BF55EC'; 
+        const CHART_LOSS_COLOR_RGB = 'rgba(191, 85, 236, 0.7)';
 
         function showMessage(message) {
             const messageBox = document.getElementById('messageBox');
@@ -418,8 +411,6 @@
             }, 3000);
         }
 
-        // --- Helper Function for Date Formatting (UTC Fix) ---
-
         function formatDateToKey(dateObj) {
             if (!(dateObj instanceof Date) || isNaN(dateObj.getTime())) {
                 console.error("Invalid Date object passed to formatDateToKey.");
@@ -433,25 +424,17 @@
             return `${year}-${month}-${day}`;
         }
         
-        // --- Helper Function for Symbol Cleaning (Requested by user) ---
-        
         function cleanSymbol(rawSymbol) {
             if (!rawSymbol) return '';
-            // Splits by space, takes the first element (e.g., 'SPXW 11/12/2025' -> 'SPXW')
             return rawSymbol.split(/\s+/)[0].trim().toUpperCase();
         }
 
-        // --- Summary Stats Logic ---
-
         function renderSummaryStats(dailySummary, allTrades) {
-            // Note: The input is now in the Settings tab, but the ID remains the same
             const initialValue = parseFloat(document.getElementById('initial-value').value) || 0;
             
-            // NEW: Get card elements (safely)
             const wireReceivedEl = document.getElementById('stat-wire-received');
-            const wireSentEl = document.getElementById('stat-wire-sent');																				 
-									 
-			
+            const wireSentEl = document.getElementById('stat-wire-sent');
+
             if (dailySummary.length === 0 && allTrades.length === 0) {
                  document.getElementById('stat-current-value').innerText = `$${initialValue.toFixed(2)}`;
                  document.getElementById('stat-total-trades').innerText = '0';
@@ -464,17 +447,12 @@
                  document.getElementById('stat-win-rate').innerText = '0.00%';
                  document.getElementById('stat-avg-pnl').innerText = '$0.00';
                  document.getElementById('stat-avg-daily-percent-gain').innerText = '0.00%'; 
-				 
-	                 // NEW: Initialize new stats
-                 if (wireReceivedEl) wireReceivedEl.innerText = '$0.00';
-                 if (wireSentEl) wireSentEl.innerText = '$0.00';										 
-									
-																
 
+                 if (wireReceivedEl) wireReceivedEl.innerText = '$0.00';
+                 if (wireSentEl) wireSentEl.innerText = '$0.00';
                  return;
             }
 
-            // --- 1. Calculate Daily PNL Metrics ---
             let totalGainCount = 0; 
             let totalLossCount = 0; 
             let totalGainAmount = 0; 
@@ -512,79 +490,44 @@
             
             const avgDailyPercentGain = totalTradingDays > 0 ? (dailyPercentGainsSum / totalTradingDays) : 0; 
             
-            // --- 2. Calculate Final Account Value and Total Trades ---
-
             let currentAccountValue = dailyCashFlowData.reduce((balance, day) => 
                 balance + parseFloat(day.Profit), initialValue
             );
 
-            // Total trades is now the count of aggregated (consolidated) positions
             const totalClosedPositions = aggregatedTradePairsData.length;
-
             const totalDays = totalGainCount + totalLossCount;
             const winningDayRate = totalDays > 0 ? (totalGainCount / totalDays) * 100 : 0;
             const avgPnlPerTrade = totalClosedPositions > 0 ? totalNetProfit / totalClosedPositions : 0;
             
-            // --- 3. Update the HTML Elements ---
-            
-            document.getElementById('stat-current-value').innerText = 
-                `$${currentAccountValue.toFixed(2)}`;
-            
-            document.getElementById('stat-total-trades').innerText = 
-                totalClosedPositions.toLocaleString(); 
-
-            document.getElementById('stat-avg-gain-pnl').innerText = 
-                `$${avgDailyGainPNL.toFixed(2)}`;
-                
-            document.getElementById('stat-avg-gain-percent').innerText = 
-                `${avgDailyGainPercent.toFixed(2)}%`;
-                
-            document.getElementById('stat-avg-loss-pnl').innerText = 
-                `$${Math.abs(avgDailyLossPNL).toFixed(2)}`; 
-                
-            document.getElementById('stat-avg-loss-percent').innerText = 
-                `${Math.abs(avgDailyLossPercent).toFixed(2)}%`;
+            document.getElementById('stat-current-value').innerText = `$${currentAccountValue.toFixed(2)}`;
+            document.getElementById('stat-total-trades').innerText = totalClosedPositions.toLocaleString(); 
+            document.getElementById('stat-avg-gain-pnl').innerText = `$${avgDailyGainPNL.toFixed(2)}`;
+            document.getElementById('stat-avg-gain-percent').innerText = `${avgDailyGainPercent.toFixed(2)}%`;
+            document.getElementById('stat-avg-loss-pnl').innerText = `$${Math.abs(avgDailyLossPNL).toFixed(2)}`; 
+            document.getElementById('stat-avg-loss-percent').innerText = `${Math.abs(avgDailyLossPercent).toFixed(2)}%`;
 
             const grossLossAbs = Math.abs(totalLossAmount).toFixed(2);
-            const avgPnlClass = avgPnlPerTrade > 0 ? 'text-info' : (avgPnlPerTrade < 0 ? 'text-danger' : 'text-secondary');
+            const avgPnlClass = avgPnlPerTrade > 0 ? 'text-win' : (avgPnlPerTrade < 0 ? 'text-loss' : 'text-secondary');
             
-            document.getElementById('stat-gross-profit').innerText = 
-                `$${totalGainAmount.toFixed(2)}`;
-            
-            document.getElementById('stat-gross-loss').innerText = 
-                `$${grossLossAbs}`; 
+            document.getElementById('stat-gross-profit').innerText = `$${totalGainAmount.toFixed(2)}`;
+            document.getElementById('stat-gross-loss').innerText = `$${grossLossAbs}`; 
+            document.getElementById('stat-win-rate').innerText = `${winningDayRate.toFixed(2)}%`; 
 
-            document.getElementById('stat-win-rate').innerText = 
-                `${winningDayRate.toFixed(2)}%`; 
-
-            document.getElementById('stat-avg-pnl').innerText = 
-                `${avgPnlPerTrade >= 0 ? '+' : ''}$${Math.abs(avgPnlPerTrade).toFixed(2)}`;
+            document.getElementById('stat-avg-pnl').innerText = `${avgPnlPerTrade >= 0 ? '+' : ''}$${Math.abs(avgPnlPerTrade).toFixed(2)}`;
             
             const avgPnlElement = document.getElementById('stat-avg-pnl');
-            avgPnlElement.classList.remove('text-info', 'text-danger', 'text-secondary');
+            avgPnlElement.classList.remove('text-win', 'text-loss', 'text-secondary');
             avgPnlElement.classList.add(avgPnlClass);
             
             const avgDailyPercentGainElement = document.getElementById('stat-avg-daily-percent-gain');
-            avgDailyPercentGainElement.innerText = 
-                `${avgDailyPercentGain >= 0 ? '+' : ''}${Math.abs(avgDailyPercentGain).toFixed(2)}%`;
-            avgDailyPercentGainElement.classList.remove('text-success', 'text-danger');
-            avgDailyPercentGainElement.classList.add(avgDailyPercentGain >= 0 ? 'text-success' : 'text-danger');
+            avgDailyPercentGainElement.innerText = `${avgDailyPercentGain >= 0 ? '+' : ''}${Math.abs(avgDailyPercentGain).toFixed(2)}%`;
+            avgDailyPercentGainElement.classList.remove('text-win', 'text-loss');
+            avgDailyPercentGainElement.classList.add(avgDailyPercentGain >= 0 ? 'text-win' : 'text-loss');
 			
-            // NEW: Update wire transfer stats
-            if (wireReceivedEl) {
-                wireReceivedEl.innerText = 
-                    `$${Math.abs(totalWireReceivedAmount).toFixed(2)}`;
-            }
-            if (wireSentEl) {
-                wireSentEl.innerText = 
-                    `$${Math.abs(totalWireSentAmount).toFixed(2)}`; 
-            }
+            if (wireReceivedEl) wireReceivedEl.innerText = `$${Math.abs(totalWireReceivedAmount).toFixed(2)}`;
+            if (wireSentEl) wireSentEl.innerText = `$${Math.abs(totalWireSentAmount).toFixed(2)}`; 
         }
 
-
-        /**
-         * Calculates cumulative balance and renders the Chart.js Bar Chart.
-         */
         function renderAccountValueChart(data) {
             const initialValueInput = document.getElementById('initial-value');
             const initialValue = parseFloat(initialValueInput.value);
@@ -621,10 +564,8 @@
                     datasets: [{
                         label: 'Total Account Value ($)',
                         data: dataPoints, 
-                        // *** THIS IS WHERE COLORS ARE DETERMINED ***
                         backgroundColor: dataPoints.map(val => val >= initialValue ? CHART_PROFIT_COLOR_RGB : CHART_LOSS_COLOR_RGB),
                         borderColor: dataPoints.map(val => val >= initialValue ? CHART_PROFIT_COLOR_HEX : CHART_LOSS_COLOR_HEX),
-                        // *****************************************
                         borderWidth: 1
                     }]
                 },
@@ -651,86 +592,68 @@
             });
         }
 
-
-        // --- Calendar Rendering Logic ---
-        
-function initializeCalendar(dailySummary) {
-    if (typeof FullCalendar === 'undefined') {
-        console.warn("FullCalendar library is not loaded. Cannot initialize calendar.");
-        return;
-    }
-
-    const calendarEl = document.getElementById('calendar');
-
-    if (calendarInstance) {
-        calendarInstance.destroy();
-        calendarInstance = null;
-    }
-
-    const events = [];
-    const dayCellClasses = {}; // Map to store custom class for each day
-
-    dailySummary.forEach(day => {
-        const profit = parseFloat(day.Profit);
-        const isProfit = profit > 0;
-        const isLoss = profit < 0;
-        const calendarDate = day.Date; 
-
-        // 1. Create the event label
-        events.push({
-            title: `${isProfit ? '+' : ''}$${Math.abs(profit).toFixed(2)}`,
-            start: calendarDate,
-            allDay: true, 
-            classNames: isProfit ? ['event-profit'] : (isLoss ? ['event-loss'] : ['event-neutral']),
-            extendedProps: {
-                netAmount: profit
+        function initializeCalendar(dailySummary) {
+            if (typeof FullCalendar === 'undefined') {
+                console.warn("FullCalendar library is not loaded.");
+                return;
             }
-        });
 
-        // 2. Map the custom class to the day for full cell coloring
-        if (isProfit) {
-            dayCellClasses[calendarDate] = 'fc-day-profit';
-        } else if (isLoss) {
-            dayCellClasses[calendarDate] = 'fc-day-loss';
-        }
-    });
-    
-    // Configure and render the calendar
-    calendarInstance = new FullCalendar.Calendar(calendarEl, {
-        headerToolbar: {
-            left: 'prev,next today',
-            center: 'title',
-            right: 'dayGridMonth'
-        }, 
-        initialDate: events.length > 0 ? events[0].start : new Date(), 
-        navLinks: true,
-        editable: false,
-        selectable: true,
-        themeSystem: 'bootstrap5',
-        
-        // --- ADDED THIS LINE TO HIDE WEEKENDS ---
-        weekends: false,
-        // ----------------------------------------
-        
-        events: events,
-        
-        // Use dayCellDidMount to apply the class to the day's background cell
-        dayCellDidMount: function(info) {
-            const dateKey = formatDateToKey(info.date);
-            const classToAdd = dayCellClasses[dateKey];
-            if (classToAdd) {
-                // The info.el is the <td> element for the day cell
-                info.el.classList.add(classToAdd);
+            const calendarEl = document.getElementById('calendar');
+
+            if (calendarInstance) {
+                calendarInstance.destroy();
+                calendarInstance = null;
             }
-        }
-    });
-    
-    calendarInstance.render();
-}
 
-        /**
-         * Ensures the calendar is correctly sized when its tab is made active.
-         */
+            const events = [];
+            const dayCellClasses = {};
+
+            dailySummary.forEach(day => {
+                const profit = parseFloat(day.Profit);
+                const isProfit = profit > 0;
+                const isLoss = profit < 0;
+                const calendarDate = day.Date; 
+
+                events.push({
+                    title: `${isProfit ? '+' : ''}$${Math.abs(profit).toFixed(2)}`,
+                    start: calendarDate,
+                    allDay: true, 
+                    classNames: isProfit ? ['event-profit'] : (isLoss ? ['event-loss'] : ['event-neutral']),
+                    extendedProps: { netAmount: profit }
+                });
+
+                if (isProfit) {
+                    dayCellClasses[calendarDate] = 'fc-day-profit';
+                } else if (isLoss) {
+                    dayCellClasses[calendarDate] = 'fc-day-loss';
+                }
+            });
+            
+            calendarInstance = new FullCalendar.Calendar(calendarEl, {
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth'
+                }, 
+                initialDate: events.length > 0 ? events[0].start : new Date(), 
+                navLinks: true,
+                editable: false,
+                selectable: true,
+                themeSystem: 'bootstrap5',
+                weekends: false,
+                events: events,
+                dayCellDidMount: function(info) {
+                    const dateKey = formatDateToKey(info.date);
+                    const classToAdd = dayCellClasses[dateKey];
+                    if (classToAdd) {
+                        info.el.classList.add(classToAdd);
+                    }
+                }
+            });
+            
+            calendarInstance.render();
+        }
+
         function ensureCalendarRerender() {
             if (calendarInstance) {
                 setTimeout(() => {
@@ -739,14 +662,10 @@ function initializeCalendar(dailySummary) {
             }
         }
 
-
-        // --- Symbol Filter Population Logic (NEW) ---
-
         function populateSymbolFilter(symbols) {
             const selectElement = document.getElementById('symbolFilterInput');
             if (!selectElement) return;
 
-            // Clear existing options and add the default "All Symbols" option
             selectElement.innerHTML = '<option value="">All Symbols</option>';
 
             symbols.forEach(symbol => {
@@ -755,11 +674,8 @@ function initializeCalendar(dailySummary) {
                 option.textContent = symbol;
                 selectElement.appendChild(option);
             });
-            // Ensure the dropdown is reset to "All Symbols" when re-populated
             selectElement.value = ""; 
         }
-
-        // --- Trade Table Rendering Logic (UPDATED FOR AGGREGATED DATA) ---
 
         function renderTradesTable(tradeGroups, filterText = '') {
             const tbody = document.getElementById('tradesTableBody');
@@ -767,22 +683,16 @@ function initializeCalendar(dailySummary) {
 
             tbody.innerHTML = ''; 
             
-            // Filter the trades based on the filterText (using the cleaned symbol)
             const normalizedFilter = cleanSymbol(filterText).toUpperCase();
             
             const filteredGroups = tradeGroups.filter(group => {
-                if (!normalizedFilter) return true; // Show all if filter is empty (i.e., 'All Symbols' is selected)
-                
-                // Use the cleanSymbol function on the trade's symbol for comparison
+                if (!normalizedFilter) return true;
                 const cleanedGroupSymbol = cleanSymbol(group.Symbol).toUpperCase();
-                
-                // Now checks for exact match, as symbols from the dropdown are exact
                 return cleanedGroupSymbol === normalizedFilter; 
             });
 
             if (filteredGroups.length === 0) {
                  const row = tbody.insertRow();
-                 // COLSPAN UPDATED TO 9 (from 8)
                  row.innerHTML = `<td colspan="9" class="text-center text-muted">No closed trade groups match your criteria.</td>`;
                  return;
             }
@@ -792,10 +702,8 @@ function initializeCalendar(dailySummary) {
                 const avgOpenPrice = parseFloat(group.AvgOpenPrice);
                 const avgClosePrice = parseFloat(group.AvgClosePrice);
                 
-                // Calculate Percentage Gain
                 let percentGain = 0;
                 if (avgOpenPrice > 0) {
-                    // Total P&L / Total Cost Basis (TotalCostBasis was calculated in aggregateTradePairs)
                     percentGain = (profit / (group.TotalProceeds - profit)) * 100;
                 }
                 
@@ -813,16 +721,12 @@ function initializeCalendar(dailySummary) {
                 }
 
                 const statusBadgeHtml = `<span class="badge ${statusBgClass} rounded px-3 py-1">${statusText}</span>`;
-                
                 const profitText = `${profit >= 0 ? '+' : ''}$${Math.abs(profit).toFixed(2)}`;
-                
-                // Percentage formatting
                 const percentText = `${percentGain >= 0 ? '+' : ''}${percentGain.toFixed(2)}%`;
                 
                 const row = tbody.insertRow();
-                const profitClass = isProfit ? 'text-info' : (profit < 0 ? 'text-danger' : 'text-secondary');
+                const profitClass = isProfit ? 'text-win' : (profit < 0 ? 'text-loss' : 'text-secondary');
                 
-                // NOTE: Using MinOpenDate, MaxCloseDate, TotalQuantity, AvgOpenPrice, AvgClosePrice
                 row.innerHTML = `
                     <td>${group.Symbol}</td>
                     <td>${group.MinOpenDate}</td>
@@ -837,10 +741,6 @@ function initializeCalendar(dailySummary) {
             });
         }
 
-
-        /**
-         * Aggregates trade pairs by their full contract Symbol to consolidate entries.
-         */
         function aggregateTradePairs(tradePairs) {
             const aggregatedMap = new Map();
 
@@ -848,7 +748,6 @@ function initializeCalendar(dailySummary) {
                 const symbol = pair.Symbol;
                 const quantity = parseFloat(pair.Quantity);
                 const netProfit = parseFloat(pair.NetProfit);
-                // Total cash outflow for the open (negative amount converted to positive cost basis)
                 const openAmount = Math.abs(parseFloat(pair.OpenAmount)); 
                 const openDate = pair.OpenDate;
                 const closeDate = pair.CloseDate;
@@ -860,56 +759,31 @@ function initializeCalendar(dailySummary) {
                         MaxCloseDate: closeDate,
                         TotalQuantity: 0,
                         TotalNetProfit: 0,
-                        TotalCostBasis: 0, // Sum of absolute Open Amounts
+                        TotalCostBasis: 0,
                     });
                 }
 
                 const group = aggregatedMap.get(symbol);
 
-                // 1. Accumulate totals
                 group.TotalQuantity += quantity;
                 group.TotalNetProfit += netProfit;
                 group.TotalCostBasis += openAmount;
 
-                // 2. Track Min/Max Dates (to show the span of the position)
-                if (openDate < group.MinOpenDate) {
-                    group.MinOpenDate = openDate;
-                }
-                if (closeDate > group.MaxCloseDate) {
-                    group.MaxCloseDate = closeDate;
-                }
+                if (openDate < group.MinOpenDate) group.MinOpenDate = openDate;
+                if (closeDate > group.MaxCloseDate) group.MaxCloseDate = closeDate;
             });
 
-            // 3. Final calculations for Average Prices
             const aggregatedArray = Array.from(aggregatedMap.values()).map(group => {
-                
-                // Total Proceeds is Cost Basis + Profit/Loss
                 const totalProceeds = group.TotalCostBasis + group.TotalNetProfit;
-                
-                // Average Open Price = Total Cost Basis / Total Quantity
                 group.AvgOpenPrice = group.TotalQuantity > 0 ? (group.TotalCostBasis / group.TotalQuantity) : 0;
-                
-                // Average Close Price = Total Proceeds / Total Quantity
                 group.AvgClosePrice = group.TotalQuantity > 0 ? (totalProceeds / group.TotalQuantity) : 0;
-                
-                // Keep TotalProceeds for the % P&L calculation in renderTradesTable
                 group.TotalProceeds = totalProceeds;
-
-                // For clean output, we don't need TotalCostBasis in the final object
-                // But we must pass it to the render function logic if needed for % calc, 
-                // so we'll just keep it here as it's cleaner than recalculating.
-                
                 return group;
             });
 
-            // Sort by close date (latest first)
             aggregatedArray.sort((a, b) => new Date(b.MaxCloseDate) - new Date(a.MaxCloseDate));
-
             return aggregatedArray;
         }
-
-
-        // --- Profit/Transfer Calculation Logic (Trade Matching) ---
 
         function calculateDailyProfit(data) {
             const dailyCashMap = new Map();
@@ -917,22 +791,18 @@ function initializeCalendar(dailySummary) {
             const tradePairs = [];
             const uniqueSymbolsSet = new Set(); 
 			
-            // NEW: Reset global wire totals
             totalWireReceivedAmount = 0; 
             totalWireSentAmount = 0;
 
-            // 1. Build the Daily Cash Flow Summary (For Account Chart)
             data.forEach(transaction => {
                 const dateKey = formatDateToKey(transaction.Date);
                 const amount = transaction.Amount; 
                 
-                // NEW: Track wire transfers
                 if (transaction.Action === 'Wire Received') {
                     totalWireReceivedAmount += amount;
                 } else if (transaction.Action === 'Wire Sent') {
-                    totalWireSentAmount += amount; // Amount is negative, so we add it.
+                    totalWireSentAmount += amount;
                 }
-				 
 
                 if (!dailyCashMap.has(dateKey)) {
                     dailyCashMap.set(dateKey, 0);
@@ -940,38 +810,26 @@ function initializeCalendar(dailySummary) {
                 dailyCashMap.set(dateKey, dailyCashMap.get(dateKey) + amount);
             });
 
-            // 2. Process Trades (Matching BTO and STC for Realized P&L)
             const trades = data.filter(d => 
                 (d.Action === 'Buy to Open' || d.Action === 'Sell to Close') && d.Symbol
             );
 
-            // Sort by date/time, then BTO before STC
             trades.sort((a, b) => {
                 const dateDiff = a.Date.getTime() - b.Date.getTime();
-                if (dateDiff !== 0) {
-                    return dateDiff;
-                }
-                if (a.Action === 'Buy to Open' && b.Action === 'Sell to Close') {
-                    return -1;
-                }
-                if (a.Action === 'Sell to Close' && b.Action === 'Buy to Open') {
-                    return 1;
-                }
+                if (dateDiff !== 0) return dateDiff;
+                if (a.Action === 'Buy to Open' && b.Action === 'Sell to Close') return -1;
+                if (a.Action === 'Sell to Close' && b.Action === 'Buy to Open') return 1;
                 return 0; 
             });
             
-            // Unmatched trades keyed by FULL RAW symbol
             const unmatchedBuys = {}; 
             
             trades.forEach(trade => {
                 const dateKey = formatDateToKey(trade.Date);
                 const rawSymbol = trade.Symbol;
-                
-                // For the Symbol Filter Dropdown (Cleaned Symbol)
                 const cleanSymbolKey = cleanSymbol(rawSymbol);
                 uniqueSymbolsSet.add(cleanSymbolKey);
 
-                // Use the full raw symbol for matching the specific contract
                 const tradeMatchKey = rawSymbol; 
 
                 if (!unmatchedBuys[tradeMatchKey]) {
@@ -981,61 +839,40 @@ function initializeCalendar(dailySummary) {
                 if (trade.Action === 'Buy to Open') {
                     unmatchedBuys[tradeMatchKey].push(trade);
                 } else if (trade.Action === 'Sell to Close') {
-                    
                     const openBuys = unmatchedBuys[tradeMatchKey];
                     
                     if (openBuys && openBuys.length > 0) {
-
-                        let qtyToClose = trade.Quantity; // The quantity of the STC transaction
+                        let qtyToClose = trade.Quantity;
                         let netProfitTotal = 0; 
                         let closedPairs = []; 
     
                         while (qtyToClose > 0 && openBuys.length > 0) {
-                            const matchedBuy = openBuys[0]; // FIFO: Get the oldest open trade
-                            
-                            // Determine the quantity we can match in this step (min of STC needed and BTO available)
+                            const matchedBuy = openBuys[0];
                             const qtyMatch = Math.min(qtyToClose, matchedBuy.Quantity);
                             
-                            // --- Calculate Pro-Rata Profit for the Matched Quantity (FIFO Cost Basis) ---
-                            
-                            // Cost Basis for QtyMatch: (QtyMatch / BTO_TotalQty) * BTO_TotalAmount (Amount is negative for BTO)
-                            // matchedBuy.Amount is the total cash outflow for that BTO line item.
                             const proRataCost = (qtyMatch / matchedBuy.Quantity) * matchedBuy.Amount; 
-                            
-                            // Proceeds for QtyMatch: (QtyMatch / STC_TotalQty) * STC_TotalAmount
-                            // trade.Amount is the total cash inflow for the STC line item.
                             const proRataProceeds = (qtyMatch / trade.Quantity) * trade.Amount;
                             
                             const netProfitMatch = proRataCost + proRataProceeds;
                             netProfitTotal += netProfitMatch;
                             
-                            // --- Create Trade Pair Record ---
                             closedPairs.push({
                                 OpenDate: formatDateToKey(matchedBuy.Date),
                                 CloseDate: dateKey,
                                 Symbol: rawSymbol, 
                                 NetProfit: netProfitMatch.toFixed(2),
-                                OpenAmount: proRataCost.toFixed(2), // Pro-rata cost basis
+                                OpenAmount: proRataCost.toFixed(2),
                                 Quantity: qtyMatch.toFixed(0), 
                                 OpenPrice: matchedBuy.Price.toFixed(2) 
                             });
     
-                            // --- Update Quantities and Queue ---
-                            
                             if (qtyMatch === matchedBuy.Quantity) {
-                                // BTO fully consumed. Remove from queue.
                                 openBuys.shift();
                             } else {
-                                // BTO partially consumed. Update its quantity and amount proportionally.
-                                
                                 const remainingQuantity = matchedBuy.Quantity - qtyMatch;
                                 const originalQuantity = matchedBuy.Quantity;
-                                
                                 matchedBuy.Quantity = remainingQuantity;
-                                // Recalculate the remaining cost basis proportionally
                                 matchedBuy.Amount = (remainingQuantity / originalQuantity) * matchedBuy.Amount;
-                                
-                                // Since we matched the rest of the STC from this partial BTO, we break
                                 qtyToClose = 0; 
                                 break; 
                             }
@@ -1043,19 +880,13 @@ function initializeCalendar(dailySummary) {
                             qtyToClose -= qtyMatch;
                         }
                         
-                        // --- Post-Loop Aggregation (Handle Unmatched STC & Update daily P&L) ---
-                        
-                        // If qtyToClose > 0, the STC transaction could not fully match an open BTO position.
                         if (qtyToClose > 0) {
                             const unmatchedProceeds = (qtyToClose / trade.Quantity) * trade.Amount;
                             netProfitTotal += unmatchedProceeds;
-                            console.warn(`STC for ${rawSymbol} on ${dateKey} had ${qtyToClose} unmatched quantity. P&L absorbed into daily summary.`);
                         }
     
-                        // Add the created pairs to the global list
                         tradePairs.push(...closedPairs);
     
-                        // Add the total net profit from this closing transaction to the daily realized profit
                         if (netProfitTotal !== 0) {
                             if (!dailyRealizedProfitMap.has(dateKey)) {
                                 dailyRealizedProfitMap.set(dateKey, 0);
@@ -1063,8 +894,6 @@ function initializeCalendar(dailySummary) {
                             dailyRealizedProfitMap.set(dateKey, dailyRealizedProfitMap.get(dateKey) + netProfitTotal);
                         }
                     } else {
-                        // Handle STC without matching BTOs (e.g. closing a short position without tracking the BTO to close it)
-                        // This profit is absorbed into the daily realized profit but no trade pair is created.
                         if (!dailyRealizedProfitMap.has(dateKey)) {
                             dailyRealizedProfitMap.set(dateKey, 0);
                         }
@@ -1073,43 +902,27 @@ function initializeCalendar(dailySummary) {
                 }
             });
 
-            // 3. Final Summaries
-            const cashFlowSummary = Array.from(dailyCashMap).map(([dateString, profit]) => ({
-                Date: dateString, 
-                Profit: profit 
-            }));
-            
-            const realizedProfitSummary = Array.from(dailyRealizedProfitMap).map(([dateString, profit]) => ({
-                Date: dateString, 
-                Profit: profit 
-            }));
+            const cashFlowSummary = Array.from(dailyCashMap).map(([dateString, profit]) => ({ Date: dateString, Profit: profit }));
+            const realizedProfitSummary = Array.from(dailyRealizedProfitMap).map(([dateString, profit]) => ({ Date: dateString, Profit: profit }));
             
             const dateSorter = (a, b) => new Date(a.Date) - new Date(b.Date);
             cashFlowSummary.sort(dateSorter);
             realizedProfitSummary.sort(dateSorter);
             
-            const uniqueSymbolsArray = Array.from(uniqueSymbolsSet).sort(); 
-
             return {
                 tradePairs: tradePairs,
                 dailyCashFlowSummary: cashFlowSummary,        
                 dailyRealizedProfitSummary: realizedProfitSummary,
-                uniqueSymbols: uniqueSymbolsArray 
+                uniqueSymbols: Array.from(uniqueSymbolsSet).sort() 
             };
         }
-
-
-        // --- CSV Parsing Logic ---
 
         function parseCSV(csvContent) {
             const lines = csvContent.trim().split('\n');
             const headerLine = lines[0].trim();
             const headers = (headerLine.match(/"([^"]*)"/g) || []).map(h => h.replace(/"/g, '').trim());
 
-            if (headers.length === 0) {
-                console.error("CSV header format error: Could not find quoted header fields.");
-                return [];
-            }
+            if (headers.length === 0) return [];
             
             const records = [];
             for (let i = 1; i < lines.length; i++) {
@@ -1121,10 +934,7 @@ function initializeCalendar(dailySummary) {
                 
                 if (!valuesMatch || valuesMatch.length !== headers.length) {
                     rawValues = line.split(',').map(v => v.trim());
-                    if (rawValues.length !== headers.length) {
-                        console.warn(`Skipping malformed row ${i + 1}. Header/Value count mismatch: ${line}`);
-                        continue;
-                    }
+                    if (rawValues.length !== headers.length) continue;
                 } else {
                     rawValues = valuesMatch.map(v => v.replace(/"/g, '').trim());
                 }
@@ -1153,8 +963,6 @@ function initializeCalendar(dailySummary) {
             return records;
         }
 
-        // --- Right Panel Toggle Logic (Updated) ---
-
         function toggleRightPanelVisibility() {
             const chartColumn = document.getElementById('chart-column');
             const rightPanelTabs = document.getElementById('right-panel-tabs'); 
@@ -1165,38 +973,26 @@ function initializeCalendar(dailySummary) {
             const isContentVisible = rightPanelTabs.classList.contains('col-lg-6');
 
             if (isContentVisible) {
-                // HIDE Right Panel (Tabs)
                 button.textContent = 'Show Right Panel';
-                
                 rightPanelTabs.classList.remove('col-lg-6');
                 rightPanelTabs.classList.add('d-none');
-                
                 chartColumn.classList.remove('col-lg-6');
                 chartColumn.classList.add('col-lg-12');
-                
                 renderAccountValueChart(dailyCashFlowData); 
             } else {
-                // SHOW Right Panel (Tabs)
                 button.textContent = 'Hide Right Panel (Charts Only View)';
-                
                 rightPanelTabs.classList.add('col-lg-6');
                 rightPanelTabs.classList.remove('d-none');
-                
                 chartColumn.classList.remove('col-lg-12');
                 chartColumn.classList.add('col-lg-6');
-                
                 renderAccountValueChart(dailyCashFlowData); 
                 
-                // If the calendar tab is active, ensure it re-renders
                 const calendarTabBtn = document.getElementById('calendar-tab-btn');
                 if (calendarTabBtn && calendarTabBtn.classList.contains('active')) {
                      ensureCalendarRerender();
                 }
             }
         }
-
-
-        // --- DOM and Event Handling ---
 
         document.addEventListener('DOMContentLoaded', () => {
             const uploadButton = document.getElementById('uploadDataButton');
@@ -1205,16 +1001,12 @@ function initializeCalendar(dailySummary) {
             const toggleButton = document.getElementById('toggleRightPanelButton'); 
             const symbolFilterInput = document.getElementById('symbolFilterInput'); 
 
-            // 1. Toggle Button Listener
             if (toggleButton) {
                 toggleButton.addEventListener('click', toggleRightPanelVisibility);
             }
 
-            // 2. File Upload Listener (Logic modified to call aggregation)
             if (uploadButton && fileInput) {
-                uploadButton.addEventListener('click', () => {
-                    fileInput.click();
-                });
+                uploadButton.addEventListener('click', () => fileInput.click());
 
                 fileInput.addEventListener('change', (event) => {
                     const file = event.target.files[0];
@@ -1240,20 +1032,17 @@ function initializeCalendar(dailySummary) {
                                 dailyCashFlowData = dailyCashFlowSummary; 
                                 dailyRealizedProfitData = dailyRealizedProfitSummary;
                                 tradePairsData = tradePairs; 
-                                aggregatedTradePairsData = aggregateTradePairs(tradePairsData); // <-- NEW STEP: Aggregate the data
+                                aggregatedTradePairsData = aggregateTradePairs(tradePairsData); 
                                 uniqueTradeSymbols = uniqueSymbols; 
                                 
-                                // RENDER ALL CONTENT
                                 initializeCalendar(dailyRealizedProfitData); 
                                 renderAccountValueChart(dailyCashFlowData);
                                 renderSummaryStats(dailyRealizedProfitData, financialData); 
                                 
-                                // RENDER TABLE with aggregated data
                                 populateSymbolFilter(uniqueTradeSymbols);
-                                renderTradesTable(aggregatedTradePairsData, symbolFilterInput ? symbolFilterInput.value : ''); // <-- Use aggregated data
+                                renderTradesTable(aggregatedTradePairsData, symbolFilterInput ? symbolFilterInput.value : '');
                                 
                                 showMessage(`Successfully processed ${financialData.length} records. Dashboard updated.`);
-                                
                             } else {
                                 showMessage("Failed to parse data. Please check the file format.");
                             }
@@ -1264,30 +1053,24 @@ function initializeCalendar(dailySummary) {
                 });
             }
 
-            // 3. Initial Value Change Listener
             if (initialValueInput) {
                 initialValueInput.addEventListener('change', () => {
                     renderSummaryStats(dailyRealizedProfitData, financialData); 
-                    
                     if (dailyCashFlowData.length > 0) {
                         renderAccountValueChart(dailyCashFlowData);
                     }
                 });
             }
 
-            // 4. Symbol Filter Listener (Now filters aggregated data)
             if (symbolFilterInput) {
                 symbolFilterInput.addEventListener('change', () => {
-                    // Filter logic is now an exact match of the selected option value
                     renderTradesTable(aggregatedTradePairsData, symbolFilterInput.value); 
                 });
             }
 
-            // Initial render of stats with default value
             renderSummaryStats([], []);
-            renderTradesTable([], ''); // Initial render of table
+            renderTradesTable([], '');
         });
     </script>
 </body>
-
 </html>
