@@ -10,34 +10,28 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
     
     <style>
-        /* Custom Dark Theme Styles */
         :root {
-            --bs-body-bg: #212529; /* Dark background */
-            --bs-body-color: #f8f9fa; /* Light text */
-            --bs-card-bg: #2d3135; /* Slightly lighter dark card background */
+            --bs-body-bg: #212529;
+            --bs-body-color: #f8f9fa;
+            --bs-card-bg: #2d3135;
             --bs-border-color: #a96094;
-            --fc-bg-event-profit: #3a8ebd; /* Darker Baby Blue for Event */
-            --fc-bg-event-loss: #702963; /* Darker Purple for Loss */
+            --fc-bg-event-profit: #3a8ebd;
+            --fc-bg-event-loss: #702963;
             --fc-text-color: #f8f9fa;
-            
-            /* Custom Win/Loss Theme Colors */
-            --color-win: #89CFF0; /* Baby Blue */
-            --color-loss: #BF55EC; /* Bright Purple */
+            --color-win: #89CFF0;
+            --color-loss: #BF55EC;
         }
         
-        /* Force loss elements to purple */
 .text-loss, 
 .text-danger {
     color: var(--color-loss) !important;
 }
 
-/* Force win elements to baby blue */
 .text-win, 
 .text-info, 
 .text-success {
     color: var(--color-win) !important;
 }
-
 
         .text-win {
             color: var(--color-win) !important;
@@ -65,10 +59,9 @@
 
         .text-bg-danger {
             color: #fff !important;
-            background-color: #6a0ded !important; /* Deep Purple Badge */
+            background-color: #6a0ded !important;
         }
             
-        /* Apply dark theme to standard Bootstrap components */
         .card {
             background-color: var(--bs-card-bg);
             border-color: var(--bs-border-color);
@@ -90,7 +83,6 @@
             box-shadow: 0 0 0 0.25rem rgba(137, 207, 240, 0.25);
         }
         
-        /* Custom Tabs Styling */
         .nav-tabs .nav-link {
             color: var(--bs-body-color);
             border-color: var(--bs-border-color);
@@ -103,7 +95,6 @@
             border-color: var(--color-win) var(--color-win) #3b4045;
         }
 
-        /* FullCalendar Custom Theming */
         .fc {
             --fc-neutral-bg-color: #3b4045;
             --fc-border-color: #a96094;
@@ -116,7 +107,6 @@
             --fc-today-bg-color: #495057;
         }
 
-        /* Custom event coloring based on profit/loss */
         .event-profit {
             background-color: var(--fc-bg-event-profit);
             border-color: var(--fc-bg-event-profit);
@@ -139,7 +129,6 @@
             color: var(--fc-text-color);
         }
 
-        /* Dim non-month days for visual clarity */
         .fc .fc-day-other {
             opacity: 0.7; 
         }
@@ -148,12 +137,10 @@
             border: 1px solid #a96094;
         }
        
-        /* Profit Day Background (Baby Blue tint) */
         .fc-day-profit {
             background-color: rgba(137, 207, 240, 0.15) !important;
         }
         
-        /* Loss Day Background (Purple tint) */
         .fc-day-loss {
             background-color: rgba(160, 32, 240, 0.2) !important; 
         }
@@ -170,7 +157,6 @@
             text-align: center;
         }
 
-        /* Message Box Styling */
         #messageBox {
             position: fixed;
             top: 20px;
@@ -186,7 +172,6 @@
             transition: opacity 0.3s ease-in-out;
         }
 
-        /* Table specific styles for dark mode */
         .table-dark {
             --bs-table-bg: #2d3135;
             --bs-table-striped-bg: #2a2e32;
@@ -401,7 +386,6 @@
         let totalWireReceivedAmount = 0;
         let totalWireSentAmount = 0;
 
-        // --- Chart Color Constants (Baby Blue for Win, Purple for Loss) ---
         const CHART_PROFIT_COLOR_HEX = '#89CFF0'; 
         const CHART_PROFIT_COLOR_RGB = 'rgba(137, 207, 240, 0.7)'; 
         const CHART_LOSS_COLOR_HEX = '#BF55EC'; 
@@ -824,15 +808,18 @@
                 dailyCashMap.set(dateKey, dailyCashMap.get(dateKey) + amount);
             });
 
+            // FIX: Include 'Expired' action so worthless options are matched against
+            // their open buys and the loss is properly recognized.
             const trades = data.filter(d => 
-                (d.Action === 'Buy to Open' || d.Action === 'Sell to Close') && d.Symbol
+                (d.Action === 'Buy to Open' || d.Action === 'Sell to Close' || d.Action === 'Expired') && d.Symbol
             );
 
             trades.sort((a, b) => {
                 const dateDiff = a.Date.getTime() - b.Date.getTime();
                 if (dateDiff !== 0) return dateDiff;
-                if (a.Action === 'Buy to Open' && b.Action === 'Sell to Close') return -1;
-                if (a.Action === 'Sell to Close' && b.Action === 'Buy to Open') return 1;
+                // Buy to Open must come first; Sell to Close and Expired come after.
+                if (a.Action === 'Buy to Open' && b.Action !== 'Buy to Open') return -1;
+                if (a.Action !== 'Buy to Open' && b.Action === 'Buy to Open') return 1;
                 return 0; 
             });
             
@@ -852,11 +839,19 @@
 
                 if (trade.Action === 'Buy to Open') {
                     unmatchedBuys[tradeMatchKey].push(trade);
-                } else if (trade.Action === 'Sell to Close') {
+
+                // FIX: Handle both 'Sell to Close' and 'Expired' in the same block.
+                // Expired options have a negative quantity in the CSV and $0 proceeds.
+                } else if (trade.Action === 'Sell to Close' || trade.Action === 'Expired') {
                     const openBuys = unmatchedBuys[tradeMatchKey];
+
+                    // Expired CSV rows use negative quantity; normalize to positive.
+                    const effectiveQty = Math.abs(trade.Quantity);
+                    // Expired options close at $0 — the full cost basis becomes a loss.
+                    const effectiveAmount = trade.Action === 'Expired' ? 0 : trade.Amount;
                     
                     if (openBuys && openBuys.length > 0) {
-                        let qtyToClose = trade.Quantity;
+                        let qtyToClose = effectiveQty;
                         let netProfitTotal = 0; 
                         let closedPairs = []; 
     
@@ -865,7 +860,9 @@
                             const qtyMatch = Math.min(qtyToClose, matchedBuy.Quantity);
                             
                             const proRataCost = (qtyMatch / matchedBuy.Quantity) * matchedBuy.Amount; 
-                            const proRataProceeds = (qtyMatch / trade.Quantity) * trade.Amount;
+                            const proRataProceeds = effectiveQty > 0
+                                ? (qtyMatch / effectiveQty) * effectiveAmount
+                                : 0;
                             
                             const netProfitMatch = proRataCost + proRataProceeds;
                             netProfitTotal += netProfitMatch;
@@ -894,8 +891,9 @@
                             qtyToClose -= qtyMatch;
                         }
                         
-                        if (qtyToClose > 0) {
-                            const unmatchedProceeds = (qtyToClose / trade.Quantity) * trade.Amount;
+                        // Only add unmatched proceeds for actual sells (expiries have $0 proceeds).
+                        if (qtyToClose > 0 && trade.Action === 'Sell to Close') {
+                            const unmatchedProceeds = (qtyToClose / effectiveQty) * effectiveAmount;
                             netProfitTotal += unmatchedProceeds;
                         }
     
@@ -907,12 +905,14 @@
                             }
                             dailyRealizedProfitMap.set(dateKey, dailyRealizedProfitMap.get(dateKey) + netProfitTotal);
                         }
-                    } else {
+                    } else if (trade.Action === 'Sell to Close') {
+                        // Unmatched sell (no open buy found) — still count proceeds as income.
                         if (!dailyRealizedProfitMap.has(dateKey)) {
                             dailyRealizedProfitMap.set(dateKey, 0);
                         }
                         dailyRealizedProfitMap.set(dateKey, dailyRealizedProfitMap.get(dateKey) + trade.Amount); 
                     }
+                    // Expired with no matching buy = nothing to do (position already cleared externally).
                 }
             });
 
@@ -959,7 +959,15 @@
 
                     switch (header) {
                         case 'Date':
-                            record[header] = new Date(value);
+                            // FIX: Brokers sometimes use "MM/DD/YYYY as of MM/DD/YYYY" for
+                            // after-hours settlements and option expiries. The "as of" date
+                            // is the actual trade date; use that instead of the settlement date.
+                            {
+                                const dateStr = value.includes(' as of ')
+                                    ? value.split(' as of ')[1]
+                                    : value;
+                                record[header] = new Date(dateStr);
+                            }
                             break;
                         case 'Quantity':
                         case 'Price':
