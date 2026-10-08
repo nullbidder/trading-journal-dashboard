@@ -6,7 +6,6 @@
     <title>Trading Journal</title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/6.1.11/main.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
     
     <style>
@@ -172,6 +171,22 @@
             transition: opacity 0.3s ease-in-out;
         }
 
+        .journal-input {
+            background-color: #3b4045;
+            border: 1px solid #555;
+            color: var(--bs-body-color);
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-size: 0.85rem;
+            width: 100%;
+            min-width: 90px;
+        }
+        .journal-input:focus { outline: none; border-color: #89CFF0; }
+        .journal-notes { min-width: 180px; }
+        .journal-table td { vertical-align: middle; white-space: nowrap; }
+        .stat-mini { font-size: 0.75rem; color: #adb5bd; }
+        .stat-mini-val { font-size: 1.15rem; font-weight: 600; }
+
         .table-dark {
             --bs-table-bg: #2d3135;
             --bs-table-striped-bg: #2a2e32;
@@ -294,6 +309,11 @@
                             </button>
                         </li>
                         <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="journal-tab-btn" data-bs-toggle="tab" data-bs-target="#journal-tab" type="button" role="tab" aria-controls="journal-tab" aria-selected="false">
+                                Journal
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
                             <button class="nav-link" id="settings-tab-btn" data-bs-toggle="tab" data-bs-target="#settings-tab" type="button" role="tab" aria-controls="settings-tab" aria-selected="false">
                                 Settings & Data
                             </button>
@@ -340,6 +360,61 @@
                             </div>
                         </div>
 
+                        <div class="tab-pane fade h-100" id="journal-tab" role="tabpanel" aria-labelledby="journal-tab-btn">
+                            <h5 class="card-title text-white mb-3">Trade Journal</h5>
+
+                            <div class="row g-2 mb-3 text-center" id="journalStats">
+                                <div class="col-4 col-xl-2"><div class="stat-mini">Trade Win Rate</div><div class="stat-mini-val" id="js-winrate">0%</div></div>
+                                <div class="col-4 col-xl-2"><div class="stat-mini">Avg Win</div><div class="stat-mini-val text-win" id="js-avgwin">$0.00</div></div>
+                                <div class="col-4 col-xl-2"><div class="stat-mini">Avg Loss</div><div class="stat-mini-val text-loss" id="js-avgloss">$0.00</div></div>
+                                <div class="col-4 col-xl-2"><div class="stat-mini">Profit Factor</div><div class="stat-mini-val" id="js-pf">-</div></div>
+                                <div class="col-4 col-xl-2"><div class="stat-mini">Expectancy / Trade</div><div class="stat-mini-val" id="js-exp">$0.00</div></div>
+                                <div class="col-4 col-xl-2"><div class="stat-mini">Left on Table</div><div class="stat-mini-val text-loss" id="js-left">$0.00</div></div>
+                            </div>
+
+                            <div class="table-responsive mb-3">
+                                <table class="table table-dark table-sm mb-0">
+                                    <thead><tr><th>Setup</th><th class="text-end">Trades</th><th class="text-end">Win %</th><th class="text-end">Net P&amp;L</th><th class="text-end">Avg / Trade</th></tr></thead>
+                                    <tbody id="setupStatsBody"><tr><td colspan="5" class="text-center text-muted">Tag trades with a setup to compare them.</td></tr></tbody>
+                                </table>
+                            </div>
+
+                            <div class="table-responsive" style="max-height: 520px; overflow-y: auto;">
+                                <table class="table table-dark table-striped table-hover journal-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Close</th><th>Symbol</th><th class="text-end">Qty</th>
+                                            <th class="text-end">Entry</th><th class="text-end">Exit</th>
+                                            <th class="text-end">P&amp;L</th><th class="text-end">%</th>
+                                            <th>Setup</th><th>Exit Reason</th>
+                                            <th>High After Exit</th><th class="text-end">Left on Table</th>
+                                            <th class="text-center">Followed Plan</th><th>Notes</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="journalTableBody">
+                                        <tr><td colspan="13" class="text-center text-muted">Upload data to start journaling.</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <datalist id="setupOptions">
+                                <option value="Range flush reversal"></option>
+                                <option value="Failed bounce"></option>
+                                <option value="Breakout"></option>
+                                <option value="Trend day"></option>
+                                <option value="AVWAP / level bounce"></option>
+                                <option value="Chase / FOMO"></option>
+                            </datalist>
+                            <datalist id="exitOptions">
+                                <option value="Hit target"></option>
+                                <option value="Stop loss"></option>
+                                <option value="Level / signal"></option>
+                                <option value="Time"></option>
+                                <option value="Fear / took profit early"></option>
+                                <option value="Expired"></option>
+                            </datalist>
+                            <small class="text-muted d-block mt-2">Journal entries save automatically in this browser. Use Settings &amp; Data to back them up.</small>
+                        </div>
+
                         <div class="tab-pane fade h-100" id="settings-tab" role="tabpanel" aria-labelledby="settings-tab-btn">
                             <h5 class="card-title text-white mb-4">Data Management</h5>
                             
@@ -356,6 +431,21 @@
                                     Upload Trades(.csv)
                                 </button>
                                 <small class="form-text text-muted">Upload a new CSV file to load and process trade history.</small>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label">Journal Backup</label>
+                                <div class="d-flex gap-2">
+                                    <button id="exportJournalButton" class="btn btn-secondary w-50" type="button">Export Journal (.json)</button>
+                                    <button id="importJournalButton" class="btn btn-secondary w-50" type="button">Import Journal</button>
+                                </div>
+                                <input type="file" id="journalFileInput" accept=".json" class="d-none">
+                                <small class="form-text text-muted">Notes, setups and exit reasons are stored in this browser only. Export to back them up or move them to another computer.</small>
+                            </div>
+
+                            <div class="mb-4">
+                                <button id="clearSavedButton" class="btn btn-outline-danger w-100" type="button">Clear Saved Trade Data</button>
+                                <small class="form-text text-muted">Removes the saved CSV from this browser. Journal entries are kept.</small>
                             </div>
 
                             <div class="text-center mt-5 p-3 text-muted border-top border-secondary">
@@ -633,7 +723,7 @@
                     center: 'title',
                     right: 'dayGridMonth'
                 }, 
-                initialDate: events.length > 0 ? events[0].start : new Date(), 
+                initialDate: events.length > 0 ? events[events.length - 1].start : new Date(), 
                 navLinks: true,
                 editable: false,
                 selectable: true,
@@ -719,7 +809,7 @@
                 }
 
                 const statusBadgeHtml = `<span class="badge ${statusBgClass} rounded px-3 py-1">${statusText}</span>`;
-                const profitText = `${profit >= 0 ? '+' : ''}$${Math.abs(profit).toFixed(2)}`;
+                const profitText = `${profit >= 0 ? '+' : '-'}$${Math.abs(profit).toFixed(2)}`;
                 const percentText = `${percentGain >= 0 ? '+' : ''}${percentGain.toFixed(2)}%`;
                 
                 const row = tbody.insertRow();
@@ -730,8 +820,8 @@
                     <td>${group.MinOpenDate}</td>
                     <td>${group.MaxCloseDate}</td>
                     <td>${group.TotalQuantity}</td>
-                    <td class="text-end">$${avgOpenPrice.toFixed(2)}</td>
-                    <td class="text-end">$${avgClosePrice.toFixed(2)}</td>
+                    <td class="text-end">$${(avgOpenPrice / multiplierFor(group.Symbol)).toFixed(2)}</td>
+                    <td class="text-end">$${(avgClosePrice / multiplierFor(group.Symbol)).toFixed(2)}</td>
                     <td class="text-center">${statusBadgeHtml}</td>
                     <td class="text-end ${profitClass}">${profitText}</td>
                     <td class="text-end ${profitClass}">${percentText}</td>
@@ -985,6 +1075,240 @@
             return records;
         }
 
+        // ==========================================
+        // JOURNAL
+        // ==========================================
+        const STORE = { csv: 'tj_csv', initial: 'tj_initial', journal: 'tj_journal' };
+
+        function storeGet(key) {
+            try { return localStorage.getItem(key); } catch (e) { return null; }
+        }
+        function storeSet(key, value) {
+            try { localStorage.setItem(key, value); return true; } catch (e) { return false; }
+        }
+        function storeRemove(key) {
+            try { localStorage.removeItem(key); } catch (e) {}
+        }
+
+        function loadJournal() {
+            try { return JSON.parse(storeGet(STORE.journal)) || {}; } catch (e) { return {}; }
+        }
+        function saveJournal(j) {
+            if (!storeSet(STORE.journal, JSON.stringify(j))) {
+                showMessage('Could not save journal in this browser. Use Export to keep a copy.');
+            }
+        }
+
+        // Options are quoted per share but cost 100x per contract
+        // (Schwab option symbols end in " C" or " P", e.g. "SPY 10/08/2026 774.00 P")
+        function multiplierFor(symbol) {
+            return /\s[CP]$/i.test((symbol || '').trim()) ? 100 : 1;
+        }
+
+        function tradeId(group) {
+            return group.Symbol + '|' + group.MinOpenDate;
+        }
+
+        function tradeNumbers(group, entry) {
+            const mult = multiplierFor(group.Symbol);
+            const qty = group.TotalQuantity;
+            const profit = parseFloat(group.TotalNetProfit);
+            const cost = group.TotalProceeds - profit;
+            const entryPx = group.AvgOpenPrice / mult;
+            const exitPx = group.AvgClosePrice / mult;
+            const pct = cost > 0 ? (profit / cost) * 100 : 0;
+            const highAfter = entry && entry.highAfter !== '' && entry.highAfter != null ? parseFloat(entry.highAfter) : NaN;
+            const left = !isNaN(highAfter) && highAfter > exitPx ? (highAfter - exitPx) * qty * mult : 0;
+            return { mult, qty, profit, entryPx, exitPx, pct, left };
+        }
+
+        function fmtMoney(v) {
+            return `${v >= 0 ? '+' : '-'}$${Math.abs(v).toFixed(2)}`;
+        }
+
+        function renderJournalStats() {
+            const journal = loadJournal();
+            const groups = aggregatedTradePairsData;
+            const set = (id, text, cls) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.innerText = text;
+                if (cls !== undefined) {
+                    el.classList.remove('text-win', 'text-loss');
+                    if (cls) el.classList.add(cls);
+                }
+            };
+
+            let wins = 0, losses = 0, grossWin = 0, grossLoss = 0, net = 0, leftTotal = 0;
+            const bySetup = new Map();
+
+            groups.forEach(g => {
+                const entry = journal[tradeId(g)] || {};
+                const n = tradeNumbers(g, entry);
+                net += n.profit;
+                leftTotal += n.left;
+                if (n.profit > 0) { wins++; grossWin += n.profit; }
+                else if (n.profit < 0) { losses++; grossLoss += n.profit; }
+
+                const setup = (entry.setup || '').trim() || 'Untagged';
+                if (!bySetup.has(setup)) bySetup.set(setup, { trades: 0, wins: 0, net: 0 });
+                const s = bySetup.get(setup);
+                s.trades++; s.net += n.profit; if (n.profit > 0) s.wins++;
+            });
+
+            const total = groups.length;
+            const winRate = total > 0 ? (wins / total) * 100 : 0;
+            const avgWin = wins > 0 ? grossWin / wins : 0;
+            const avgLoss = losses > 0 ? grossLoss / losses : 0;
+            const pf = grossLoss < 0 ? (grossWin / Math.abs(grossLoss)) : (grossWin > 0 ? Infinity : NaN);
+            const exp = total > 0 ? net / total : 0;
+
+            set('js-winrate', `${winRate.toFixed(1)}%`);
+            set('js-avgwin', `$${avgWin.toFixed(2)}`);
+            set('js-avgloss', `$${Math.abs(avgLoss).toFixed(2)}`);
+            set('js-pf', isNaN(pf) ? '-' : (pf === Infinity ? 'No losses' : pf.toFixed(2)), isNaN(pf) ? '' : (pf >= 1 ? 'text-win' : 'text-loss'));
+            set('js-exp', fmtMoney(exp), exp >= 0 ? 'text-win' : 'text-loss');
+            set('js-left', `$${leftTotal.toFixed(2)}`);
+
+            const tbody = document.getElementById('setupStatsBody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            if (bySetup.size === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Tag trades with a setup to compare them.</td></tr>';
+                return;
+            }
+            Array.from(bySetup.entries())
+                .sort((a, b) => b[1].net - a[1].net)
+                .forEach(([name, s]) => {
+                    const row = tbody.insertRow();
+                    const cls = s.net > 0 ? 'text-win' : (s.net < 0 ? 'text-loss' : '');
+                    const c0 = row.insertCell(); c0.textContent = name;
+                    const c1 = row.insertCell(); c1.className = 'text-end'; c1.textContent = s.trades;
+                    const c2 = row.insertCell(); c2.className = 'text-end'; c2.textContent = `${((s.wins / s.trades) * 100).toFixed(0)}%`;
+                    const c3 = row.insertCell(); c3.className = `text-end ${cls}`; c3.textContent = fmtMoney(s.net);
+                    const c4 = row.insertCell(); c4.className = `text-end ${cls}`; c4.textContent = fmtMoney(s.net / s.trades);
+                });
+        }
+
+        function renderJournalTable() {
+            const tbody = document.getElementById('journalTableBody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            if (aggregatedTradePairsData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Upload data to start journaling.</td></tr>';
+                renderJournalStats();
+                return;
+            }
+
+            const journal = loadJournal();
+
+            aggregatedTradePairsData.forEach(group => {
+                const id = tradeId(group);
+                const entry = journal[id] || {};
+                const n = tradeNumbers(group, entry);
+                const cls = n.profit > 0 ? 'text-win' : (n.profit < 0 ? 'text-loss' : 'text-secondary');
+                const row = tbody.insertRow();
+
+                const textCell = (text, extra) => {
+                    const c = row.insertCell();
+                    if (extra) c.className = extra;
+                    c.textContent = text;
+                    return c;
+                };
+
+                textCell(group.MaxCloseDate);
+                textCell(group.Symbol);
+                textCell(n.qty, 'text-end');
+                textCell(`$${n.entryPx.toFixed(2)}`, 'text-end');
+                textCell(`$${n.exitPx.toFixed(2)}`, 'text-end');
+                textCell(fmtMoney(n.profit), `text-end ${cls}`);
+                textCell(`${n.pct >= 0 ? '+' : ''}${n.pct.toFixed(1)}%`, `text-end ${cls}`);
+
+                const save = (field, value) => {
+                    const j = loadJournal();
+                    j[id] = Object.assign({}, j[id], { [field]: value, updated: new Date().toISOString() });
+                    saveJournal(j);
+                };
+
+                const inputCell = (field, opts) => {
+                    const c = row.insertCell();
+                    const input = document.createElement('input');
+                    input.className = 'journal-input' + (opts.extraClass ? ' ' + opts.extraClass : '');
+                    input.type = opts.type || 'text';
+                    if (opts.list) input.setAttribute('list', opts.list);
+                    if (opts.step) input.step = opts.step;
+                    if (opts.placeholder) input.placeholder = opts.placeholder;
+                    input.value = entry[field] != null ? entry[field] : '';
+                    input.addEventListener('change', () => {
+                        save(field, input.value);
+                        if (opts.onSave) opts.onSave(input.value);
+                        renderJournalStats();
+                    });
+                    c.appendChild(input);
+                    return c;
+                };
+
+                inputCell('setup', { list: 'setupOptions', placeholder: 'Setup' });
+                inputCell('exitReason', { list: 'exitOptions', placeholder: 'Why sold' });
+
+                const leftCell = document.createElement('td');
+                leftCell.className = 'text-end text-loss';
+                const updateLeft = (val) => {
+                    const hv = parseFloat(val);
+                    const left = !isNaN(hv) && hv > n.exitPx ? (hv - n.exitPx) * n.qty * n.mult : 0;
+                    leftCell.textContent = left > 0 ? `$${left.toFixed(2)}` : '-';
+                };
+                inputCell('highAfter', { type: 'number', step: '0.01', placeholder: '0.00', onSave: updateLeft });
+                row.appendChild(leftCell);
+                updateLeft(entry.highAfter);
+
+                const planCell = row.insertCell();
+                planCell.className = 'text-center';
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.className = 'form-check-input';
+                cb.checked = !!entry.followedPlan;
+                cb.addEventListener('change', () => { save('followedPlan', cb.checked); });
+                planCell.appendChild(cb);
+
+                inputCell('notes', { placeholder: 'What happened?', extraClass: 'journal-notes' });
+            });
+
+            renderJournalStats();
+        }
+
+        function processCsv(rawContent, fromSaved) {
+            const parsedData = parseCSV(rawContent);
+            if (parsedData.length === 0) {
+                if (!fromSaved) showMessage("Failed to parse data. Please check the file format.");
+                return false;
+            }
+
+            financialData = parsedData;
+            const { tradePairs, dailyCashFlowSummary, dailyRealizedProfitSummary, uniqueSymbols } = calculateDailyProfit(financialData);
+
+            dailyCashFlowData = dailyCashFlowSummary;
+            dailyRealizedProfitData = dailyRealizedProfitSummary;
+            tradePairsData = tradePairs;
+            aggregatedTradePairsData = aggregateTradePairs(tradePairsData);
+            uniqueTradeSymbols = uniqueSymbols;
+
+            const symbolFilterInput = document.getElementById('symbolFilterInput');
+            initializeCalendar(dailyRealizedProfitData);
+            renderAccountValueChart(dailyCashFlowData);
+            renderSummaryStats(dailyRealizedProfitData, financialData);
+            populateSymbolFilter(uniqueTradeSymbols);
+            renderTradesTable(aggregatedTradePairsData, symbolFilterInput ? symbolFilterInput.value : '');
+            renderJournalTable();
+
+            if (!fromSaved) {
+                storeSet(STORE.csv, rawContent);
+                showMessage(`Successfully processed ${financialData.length} records. Dashboard updated.`);
+            }
+            return true;
+        }
+
         function toggleRightPanelVisibility() {
             const chartColumn = document.getElementById('chart-column');
             const rightPanelTabs = document.getElementById('right-panel-tabs'); 
@@ -1043,31 +1367,8 @@
                         const reader = new FileReader();
 
                         reader.onload = (e) => {
-                            const rawContent = e.target.result;
-                            const parsedData = parseCSV(rawContent);
-                            
-                            if (parsedData.length > 0) {
-                                financialData = parsedData; 
-                                
-                                const { tradePairs, dailyCashFlowSummary, dailyRealizedProfitSummary, uniqueSymbols } = calculateDailyProfit(financialData);
-                                
-                                dailyCashFlowData = dailyCashFlowSummary; 
-                                dailyRealizedProfitData = dailyRealizedProfitSummary;
-                                tradePairsData = tradePairs; 
-                                aggregatedTradePairsData = aggregateTradePairs(tradePairsData); 
-                                uniqueTradeSymbols = uniqueSymbols; 
-                                
-                                initializeCalendar(dailyRealizedProfitData); 
-                                renderAccountValueChart(dailyCashFlowData);
-                                renderSummaryStats(dailyRealizedProfitData, financialData); 
-                                
-                                populateSymbolFilter(uniqueTradeSymbols);
-                                renderTradesTable(aggregatedTradePairsData, symbolFilterInput ? symbolFilterInput.value : '');
-                                
-                                showMessage(`Successfully processed ${financialData.length} records. Dashboard updated.`);
-                            } else {
-                                showMessage("Failed to parse data. Please check the file format.");
-                            }
+                            processCsv(e.target.result, false);
+                            event.target.value = null;
                         };
 
                         reader.readAsText(file);
@@ -1075,8 +1376,14 @@
                 });
             }
 
+            const savedInitial = storeGet(STORE.initial);
+            if (initialValueInput && savedInitial !== null) {
+                initialValueInput.value = savedInitial;
+            }
+
             if (initialValueInput) {
                 initialValueInput.addEventListener('change', () => {
+                    storeSet(STORE.initial, initialValueInput.value);
                     renderSummaryStats(dailyRealizedProfitData, financialData); 
                     if (dailyCashFlowData.length > 0) {
                         renderAccountValueChart(dailyCashFlowData);
@@ -1090,8 +1397,58 @@
                 });
             }
 
+            // ---------- Journal backup ----------
+            const exportBtn = document.getElementById('exportJournalButton');
+            const importBtn = document.getElementById('importJournalButton');
+            const journalFileInput = document.getElementById('journalFileInput');
+            const clearBtn = document.getElementById('clearSavedButton');
+
+            if (exportBtn) {
+                exportBtn.addEventListener('click', () => {
+                    const blob = new Blob([JSON.stringify(loadJournal(), null, 2)], { type: 'application/json' });
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = `trading-journal-${new Date().toISOString().slice(0, 10)}.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+                });
+            }
+            if (importBtn && journalFileInput) {
+                importBtn.addEventListener('click', () => journalFileInput.click());
+                journalFileInput.addEventListener('change', (event) => {
+                    const file = event.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const incoming = JSON.parse(e.target.result);
+                            if (typeof incoming !== 'object' || Array.isArray(incoming)) throw new Error('bad format');
+                            saveJournal(Object.assign(loadJournal(), incoming));
+                            renderJournalTable();
+                            showMessage(`Imported ${Object.keys(incoming).length} journal entries.`);
+                        } catch (err) {
+                            showMessage('That file is not a journal export.');
+                        }
+                        event.target.value = null;
+                    };
+                    reader.readAsText(file);
+                });
+            }
+            if (clearBtn) {
+                clearBtn.addEventListener('click', () => {
+                    storeRemove(STORE.csv);
+                    showMessage('Saved trade data cleared. Journal entries kept.');
+                });
+            }
+
             renderSummaryStats([], []);
             renderTradesTable([], '');
+
+            // Reload the last uploaded CSV so the dashboard and journal survive a refresh
+            const savedCsv = storeGet(STORE.csv);
+            if (savedCsv) processCsv(savedCsv, true);
         });
     </script>
 </body>
