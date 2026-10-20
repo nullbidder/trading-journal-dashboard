@@ -183,7 +183,23 @@
         }
         .journal-input:focus { outline: none; border-color: #89CFF0; }
         .journal-notes { min-width: 180px; }
+        .journal-time { min-width: 105px; color-scheme: dark; }
         .journal-table td { vertical-align: middle; white-space: nowrap; }
+        .shots-btn { white-space: nowrap; font-size: 0.8rem; padding: 1px 8px; }
+        .shots-drop {
+            border: 2px dashed #a96094; border-radius: 8px; padding: 22px;
+            text-align: center; color: #adb5bd; outline: none;
+        }
+        .shots-drop.dragover, .shots-drop:focus { border-color: #89CFF0; color: #f8f9fa; }
+        .shots-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+        .shot-card { background: #3b4045; border: 1px solid #555; border-radius: 6px; padding: 6px; }
+        .shot-card img { width: 100%; height: 150px; object-fit: contain; background: #000; border-radius: 4px; cursor: zoom-in; }
+        .shot-meta { display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: #adb5bd; margin-top: 4px; }
+        #shotLightbox {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 2000;
+            display: none; align-items: center; justify-content: center; cursor: zoom-out; padding: 16px;
+        }
+        #shotLightbox img { max-width: 100%; max-height: 100%; object-fit: contain; }
         .stat-mini { font-size: 0.75rem; color: #adb5bd; }
         .stat-mini-val { font-size: 1.15rem; font-weight: 600; }
 
@@ -364,18 +380,19 @@
                             <h5 class="card-title text-white mb-3">Trade Journal</h5>
 
                             <div class="row g-2 mb-3 text-center" id="journalStats">
-                                <div class="col-4 col-xl-2"><div class="stat-mini">Trade Win Rate</div><div class="stat-mini-val" id="js-winrate">0%</div></div>
-                                <div class="col-4 col-xl-2"><div class="stat-mini">Avg Win</div><div class="stat-mini-val text-win" id="js-avgwin">$0.00</div></div>
-                                <div class="col-4 col-xl-2"><div class="stat-mini">Avg Loss</div><div class="stat-mini-val text-loss" id="js-avgloss">$0.00</div></div>
-                                <div class="col-4 col-xl-2"><div class="stat-mini">Profit Factor</div><div class="stat-mini-val" id="js-pf">-</div></div>
-                                <div class="col-4 col-xl-2"><div class="stat-mini">Expectancy / Trade</div><div class="stat-mini-val" id="js-exp">$0.00</div></div>
-                                <div class="col-4 col-xl-2"><div class="stat-mini">Left on Table</div><div class="stat-mini-val text-loss" id="js-left">$0.00</div></div>
+                                <div class="col-4 col-xl"><div class="stat-mini">Trade Win Rate</div><div class="stat-mini-val" id="js-winrate">0%</div></div>
+                                <div class="col-4 col-xl"><div class="stat-mini">Avg Win</div><div class="stat-mini-val text-win" id="js-avgwin">$0.00</div></div>
+                                <div class="col-4 col-xl"><div class="stat-mini">Avg Loss</div><div class="stat-mini-val text-loss" id="js-avgloss">$0.00</div></div>
+                                <div class="col-4 col-xl"><div class="stat-mini">Profit Factor</div><div class="stat-mini-val" id="js-pf">-</div></div>
+                                <div class="col-4 col-xl"><div class="stat-mini">Expectancy / Trade</div><div class="stat-mini-val" id="js-exp">$0.00</div></div>
+                                <div class="col-4 col-xl"><div class="stat-mini">Left on Table</div><div class="stat-mini-val text-loss" id="js-left">$0.00</div></div>
+                                <div class="col-4 col-xl"><div class="stat-mini">Avg Hold</div><div class="stat-mini-val" id="js-hold">-</div></div>
                             </div>
 
                             <div class="table-responsive mb-3">
                                 <table class="table table-dark table-sm mb-0">
-                                    <thead><tr><th>Setup</th><th class="text-end">Trades</th><th class="text-end">Win %</th><th class="text-end">Net P&amp;L</th><th class="text-end">Avg / Trade</th></tr></thead>
-                                    <tbody id="setupStatsBody"><tr><td colspan="5" class="text-center text-muted">Tag trades with a setup to compare them.</td></tr></tbody>
+                                    <thead><tr><th>Setup</th><th class="text-end">Trades</th><th class="text-end">Win %</th><th class="text-end">Net P&amp;L</th><th class="text-end">Avg / Trade</th><th class="text-end">Avg Hold</th></tr></thead>
+                                    <tbody id="setupStatsBody"><tr><td colspan="6" class="text-center text-muted">Tag trades with a setup to compare them.</td></tr></tbody>
                                 </table>
                             </div>
 
@@ -386,13 +403,14 @@
                                             <th>Close</th><th>Symbol</th><th class="text-end">Qty</th>
                                             <th class="text-end">Entry</th><th class="text-end">Exit</th>
                                             <th class="text-end">P&amp;L</th><th class="text-end">%</th>
+                                            <th>Entry Time</th><th>Exit Time</th><th class="text-end">Hold</th>
                                             <th>Setup</th><th>Exit Reason</th>
                                             <th>High After Exit</th><th class="text-end">Left on Table</th>
-                                            <th class="text-center">Followed Plan</th><th>Notes</th>
+                                            <th class="text-center">Followed Plan</th><th>Notes</th><th class="text-center">Charts</th>
                                         </tr>
                                     </thead>
                                     <tbody id="journalTableBody">
-                                        <tr><td colspan="13" class="text-center text-muted">Upload data to start journaling.</td></tr>
+                                        <tr><td colspan="17" class="text-center text-muted">Upload data to start journaling.</td></tr>
                                     </tbody>
                                 </table>
                             </div>
@@ -412,7 +430,7 @@
                                 <option value="Fear / took profit early"></option>
                                 <option value="Expired"></option>
                             </datalist>
-                            <small class="text-muted d-block mt-2">Journal entries save automatically in this browser. Use Settings &amp; Data to back them up.</small>
+                            <small class="text-muted d-block mt-2">Journal entries and chart screenshots save automatically in this browser. Use Settings &amp; Data to back them up.</small>
                         </div>
 
                         <div class="tab-pane fade h-100" id="settings-tab" role="tabpanel" aria-labelledby="settings-tab-btn">
@@ -440,7 +458,7 @@
                                     <button id="importJournalButton" class="btn btn-secondary w-50" type="button">Import Journal</button>
                                 </div>
                                 <input type="file" id="journalFileInput" accept=".json" class="d-none">
-                                <small class="form-text text-muted">Notes, setups and exit reasons are stored in this browser only. Export to back them up or move them to another computer.</small>
+                                <small class="form-text text-muted">Notes, setups, exit reasons and chart screenshots are stored in this browser only. Export to back them up or move them to another computer (screenshots are included in the file).</small>
                             </div>
 
                             <div class="mb-4">
@@ -457,6 +475,27 @@
             </div>
         </div>
     </div>
+
+    <!-- Chart screenshots for one trade -->
+    <div class="modal fade" id="shotsModal" tabindex="-1" aria-labelledby="shotsModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content" style="background-color: var(--bs-card-bg); border-color: var(--bs-border-color); color: var(--bs-body-color);">
+                <div class="modal-header" style="border-color: #555;">
+                    <h5 class="modal-title" id="shotsModalTitle">Chart screenshots</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="shotsDrop" class="shots-drop" tabindex="0">
+                        Paste a screenshot (Ctrl+V), drop images here, or
+                        <button type="button" class="btn btn-sm btn-secondary ms-1" id="shotsPickBtn">choose files</button>
+                    </div>
+                    <input type="file" id="shotsFileInput" accept="image/*" multiple class="d-none">
+                    <div id="shotsGrid" class="shots-grid mt-3"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="shotLightbox" title="Click to close"><img alt="Chart screenshot, full size"></div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/6.1.11/index.global.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -1122,6 +1161,37 @@
             return { mult, qty, profit, entryPx, exitPx, pct, left };
         }
 
+        // Minutes between entry and exit times (HH:MM). Adds whole days when the
+        // trade closed on a later date than it opened.
+        function parseDay(d) {
+            if (!d) return NaN;
+            const t = Date.parse(d);
+            if (!isNaN(t)) return Math.floor(t / 86400000);
+            const m = String(d).match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+            if (!m) return NaN;
+            const y = m[3].length === 2 ? 2000 + parseInt(m[3], 10) : parseInt(m[3], 10);
+            return Math.floor(Date.UTC(y, parseInt(m[1], 10) - 1, parseInt(m[2], 10)) / 86400000);
+        }
+        function holdMinutes(group, entry) {
+            const toMin = (t) => {
+                const m = /^(\d{1,2}):(\d{2})/.exec(t || '');
+                return m ? parseInt(m[1], 10) * 60 + parseInt(m[2], 10) : NaN;
+            };
+            const a = toMin(entry && entry.entryTime), b = toMin(entry && entry.exitTime);
+            if (isNaN(a) || isNaN(b)) return NaN;
+            const d0 = parseDay(group.MinOpenDate), d1 = parseDay(group.MaxCloseDate);
+            const days = (!isNaN(d0) && !isNaN(d1) && d1 > d0) ? d1 - d0 : 0;
+            const mins = days * 1440 + (b - a);
+            return mins >= 0 ? mins : NaN;
+        }
+        function fmtHold(mins) {
+            if (isNaN(mins)) return '-';
+            const m = Math.round(mins);
+            if (m < 60) return `${m}m`;
+            if (m < 1440) return `${Math.floor(m / 60)}h ${m % 60}m`;
+            return `${Math.floor(m / 1440)}d ${Math.floor((m % 1440) / 60)}h`;
+        }
+
         function fmtMoney(v) {
             return `${v >= 0 ? '+' : '-'}$${Math.abs(v).toFixed(2)}`;
         }
@@ -1140,6 +1210,7 @@
             };
 
             let wins = 0, losses = 0, grossWin = 0, grossLoss = 0, net = 0, leftTotal = 0;
+            let holdSum = 0, holdN = 0;
             const bySetup = new Map();
 
             groups.forEach(g => {
@@ -1151,9 +1222,11 @@
                 else if (n.profit < 0) { losses++; grossLoss += n.profit; }
 
                 const setup = (entry.setup || '').trim() || 'Untagged';
-                if (!bySetup.has(setup)) bySetup.set(setup, { trades: 0, wins: 0, net: 0 });
+                if (!bySetup.has(setup)) bySetup.set(setup, { trades: 0, wins: 0, net: 0, holdSum: 0, holdN: 0 });
                 const s = bySetup.get(setup);
                 s.trades++; s.net += n.profit; if (n.profit > 0) s.wins++;
+                const h = holdMinutes(g, entry);
+                if (!isNaN(h)) { holdSum += h; holdN++; s.holdSum += h; s.holdN++; }
             });
 
             const total = groups.length;
@@ -1169,12 +1242,13 @@
             set('js-pf', isNaN(pf) ? '-' : (pf === Infinity ? 'No losses' : pf.toFixed(2)), isNaN(pf) ? '' : (pf >= 1 ? 'text-win' : 'text-loss'));
             set('js-exp', fmtMoney(exp), exp >= 0 ? 'text-win' : 'text-loss');
             set('js-left', `$${leftTotal.toFixed(2)}`);
+            set('js-hold', holdN > 0 ? fmtHold(holdSum / holdN) : '-');
 
             const tbody = document.getElementById('setupStatsBody');
             if (!tbody) return;
             tbody.innerHTML = '';
             if (bySetup.size === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Tag trades with a setup to compare them.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Tag trades with a setup to compare them.</td></tr>';
                 return;
             }
             Array.from(bySetup.entries())
@@ -1187,6 +1261,7 @@
                     const c2 = row.insertCell(); c2.className = 'text-end'; c2.textContent = `${((s.wins / s.trades) * 100).toFixed(0)}%`;
                     const c3 = row.insertCell(); c3.className = `text-end ${cls}`; c3.textContent = fmtMoney(s.net);
                     const c4 = row.insertCell(); c4.className = `text-end ${cls}`; c4.textContent = fmtMoney(s.net / s.trades);
+                    const c5 = row.insertCell(); c5.className = 'text-end'; c5.textContent = s.holdN > 0 ? fmtHold(s.holdSum / s.holdN) : '-';
                 });
         }
 
@@ -1196,7 +1271,7 @@
             tbody.innerHTML = '';
 
             if (aggregatedTradePairsData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Upload data to start journaling.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="17" class="text-center text-muted">Upload data to start journaling.</td></tr>';
                 renderJournalStats();
                 return;
             }
@@ -1224,6 +1299,7 @@
                 textCell(`$${n.exitPx.toFixed(2)}`, 'text-end');
                 textCell(fmtMoney(n.profit), `text-end ${cls}`);
                 textCell(`${n.pct >= 0 ? '+' : ''}${n.pct.toFixed(1)}%`, `text-end ${cls}`);
+                const timeCellsAt = row.cells.length;   // entry/exit/hold get inserted here
 
                 const save = (field, value) => {
                     const j = loadJournal();
@@ -1249,6 +1325,19 @@
                     return c;
                 };
 
+                const holdCell = document.createElement('td');
+                holdCell.className = 'text-end';
+                const updateHold = () => {
+                    const e = loadJournal()[id] || {};
+                    holdCell.textContent = fmtHold(holdMinutes(group, e));
+                };
+                const entryTimeCell = inputCell('entryTime', { type: 'time', extraClass: 'journal-time', onSave: updateHold });
+                const exitTimeCell = inputCell('exitTime', { type: 'time', extraClass: 'journal-time', onSave: updateHold });
+                row.insertBefore(entryTimeCell, row.cells[timeCellsAt]);
+                row.insertBefore(exitTimeCell, row.cells[timeCellsAt + 1]);
+                row.insertBefore(holdCell, row.cells[timeCellsAt + 2]);
+                updateHold();
+
                 inputCell('setup', { list: 'setupOptions', placeholder: 'Setup' });
                 inputCell('exitReason', { list: 'exitOptions', placeholder: 'Why sold' });
 
@@ -1273,9 +1362,207 @@
                 planCell.appendChild(cb);
 
                 inputCell('notes', { placeholder: 'What happened?', extraClass: 'journal-notes' });
+
+                const shotCell = row.insertCell();
+                shotCell.className = 'text-center';
+                const shotBtn = document.createElement('button');
+                shotBtn.type = 'button';
+                shotBtn.className = 'btn btn-outline-info shots-btn';
+                shotBtn.dataset.tradeId = id;
+                shotBtn.textContent = '+ Add';
+                shotBtn.title = 'Add or view chart screenshots';
+                shotBtn.addEventListener('click', () => openShots(id, `${group.Symbol} - closed ${group.MaxCloseDate}`));
+                shotCell.appendChild(shotBtn);
             });
 
+            refreshShotCounts();
             renderJournalStats();
+        }
+
+        // ---------- Chart screenshots (IndexedDB: much more room than localStorage) ----------
+        const IMG_DB = 'tj_images', IMG_STORE = 'shots';
+        let imgDbPromise = null;
+        let currentShotTrade = null;
+        let shotUrls = [];
+
+        function imgDb() {
+            if (!imgDbPromise) {
+                imgDbPromise = new Promise((resolve, reject) => {
+                    let req;
+                    try { req = indexedDB.open(IMG_DB, 1); } catch (e) { reject(e); return; }
+                    req.onupgradeneeded = () => {
+                        const os = req.result.createObjectStore(IMG_STORE, { keyPath: 'id', autoIncrement: true });
+                        os.createIndex('tradeId', 'tradeId', { unique: false });
+                    };
+                    req.onsuccess = () => resolve(req.result);
+                    req.onerror = () => reject(req.error);
+                }).catch(err => { imgDbPromise = null; throw err; });
+            }
+            return imgDbPromise;
+        }
+
+        function imgRequest(mode, makeReq) {
+            return imgDb().then(db => new Promise((resolve, reject) => {
+                const tx = db.transaction(IMG_STORE, mode);
+                const req = makeReq(tx.objectStore(IMG_STORE));
+                let result;
+                req.onsuccess = () => { result = req.result; };
+                tx.oncomplete = () => resolve(result);
+                tx.onerror = () => reject(tx.error);
+                tx.onabort = () => reject(tx.error);
+            }));
+        }
+
+        const shotsFor = (tradeId) => imgRequest('readonly', os => os.index('tradeId').getAll(tradeId)).then(r => r || []);
+        const allShots = () => imgRequest('readonly', os => os.getAll()).then(r => r || []);
+        const addShot = (rec) => imgRequest('readwrite', os => os.add(rec));
+        const deleteShot = (id) => imgRequest('readwrite', os => os.delete(id));
+
+        function shotCounts() {
+            return imgDb().then(db => new Promise((resolve, reject) => {
+                const counts = new Map();
+                const tx = db.transaction(IMG_STORE, 'readonly');
+                const req = tx.objectStore(IMG_STORE).index('tradeId').openKeyCursor();
+                req.onsuccess = () => {
+                    const cur = req.result;
+                    if (cur) { counts.set(cur.key, (counts.get(cur.key) || 0) + 1); cur.continue(); }
+                };
+                tx.oncomplete = () => resolve(counts);
+                tx.onerror = () => reject(tx.error);
+            }));
+        }
+
+        function refreshShotCounts() {
+            shotCounts().then(counts => {
+                document.querySelectorAll('.shots-btn').forEach(btn => {
+                    const n = counts.get(btn.dataset.tradeId) || 0;
+                    btn.textContent = n > 0 ? `View (${n})` : '+ Add';
+                    btn.classList.toggle('btn-info', n > 0);
+                    btn.classList.toggle('btn-outline-info', n === 0);
+                });
+            }).catch(() => {});
+        }
+
+        // Big screenshots are scaled to 2000px wide and saved as JPEG to save space
+        async function prepareImage(file) {
+            if (!file || !file.type || !file.type.startsWith('image/')) return null;
+            const MAX_W = 2000;
+            try {
+                const bmp = await createImageBitmap(file);
+                if (bmp.width <= MAX_W && file.size <= 1500000) { if (bmp.close) bmp.close(); return file; }
+                const scale = Math.min(1, MAX_W / bmp.width);
+                const canvas = document.createElement('canvas');
+                canvas.width = Math.round(bmp.width * scale);
+                canvas.height = Math.round(bmp.height * scale);
+                canvas.getContext('2d').drawImage(bmp, 0, 0, canvas.width, canvas.height);
+                if (bmp.close) bmp.close();
+                return await new Promise(res => canvas.toBlob(b => res(b || file), 'image/jpeg', 0.85));
+            } catch (e) {
+                return file;
+            }
+        }
+
+        async function addShotFiles(files) {
+            if (!currentShotTrade) return;
+            const images = Array.from(files || []).filter(f => f.type && f.type.startsWith('image/'));
+            if (images.length === 0) { showMessage('No image found. Copy a screenshot first, then paste.'); return; }
+            let added = 0;
+            for (const f of images) {
+                const blob = await prepareImage(f);
+                if (!blob) continue;
+                try {
+                    await addShot({ tradeId: currentShotTrade.id, blob, added: new Date().toISOString() });
+                    added++;
+                } catch (e) {
+                    showMessage('Could not save the screenshot. Browser storage may be full or blocked.');
+                    break;
+                }
+            }
+            if (added > 0) {
+                showMessage(`Saved ${added} screenshot${added > 1 ? 's' : ''}.`);
+                renderShotGrid();
+                refreshShotCounts();
+            }
+        }
+
+        function clearShotUrls() {
+            shotUrls.forEach(u => URL.revokeObjectURL(u));
+            shotUrls = [];
+        }
+
+        async function renderShotGrid() {
+            const grid = document.getElementById('shotsGrid');
+            if (!grid || !currentShotTrade) return;
+            let shots = [];
+            try { shots = await shotsFor(currentShotTrade.id); }
+            catch (e) { grid.innerHTML = '<div class="text-muted">Screenshots are not available in this browser (storage blocked).</div>'; return; }
+            clearShotUrls();
+            grid.innerHTML = '';
+            if (shots.length === 0) {
+                grid.innerHTML = '<div class="text-muted">No screenshots yet for this trade.</div>';
+                return;
+            }
+            shots.sort((a, b) => (a.added || '').localeCompare(b.added || ''));
+            shots.forEach(s => {
+                const url = URL.createObjectURL(s.blob);
+                shotUrls.push(url);
+                const card = document.createElement('div');
+                card.className = 'shot-card';
+                const img = document.createElement('img');
+                img.src = url;
+                img.alt = 'Chart screenshot';
+                img.addEventListener('click', () => openLightbox(url));
+                const meta = document.createElement('div');
+                meta.className = 'shot-meta';
+                const when = document.createElement('span');
+                when.textContent = s.added ? new Date(s.added).toLocaleString() : '';
+                const del = document.createElement('button');
+                del.type = 'button';
+                del.className = 'btn btn-sm btn-outline-danger py-0';
+                del.textContent = 'Delete';
+                del.addEventListener('click', async () => {
+                    if (del.dataset.armed !== '1') {
+                        del.dataset.armed = '1';
+                        del.textContent = 'Confirm?';
+                        setTimeout(() => { del.dataset.armed = ''; del.textContent = 'Delete'; }, 3000);
+                        return;
+                    }
+                    await deleteShot(s.id).catch(() => {});
+                    renderShotGrid();
+                    refreshShotCounts();
+                });
+                meta.appendChild(when);
+                meta.appendChild(del);
+                card.appendChild(img);
+                card.appendChild(meta);
+                grid.appendChild(card);
+            });
+        }
+
+        function openShots(id, label) {
+            currentShotTrade = { id, label };
+            const title = document.getElementById('shotsModalTitle');
+            if (title) title.textContent = `Chart screenshots - ${label}`;
+            const el = document.getElementById('shotsModal');
+            if (!el || !window.bootstrap) return;
+            bootstrap.Modal.getOrCreateInstance(el).show();
+            renderShotGrid();
+        }
+
+        function openLightbox(url) {
+            const lb = document.getElementById('shotLightbox');
+            if (!lb) return;
+            lb.querySelector('img').src = url;
+            lb.style.display = 'flex';
+        }
+
+        function blobToDataUrl(blob) {
+            return new Promise((resolve, reject) => {
+                const r = new FileReader();
+                r.onload = () => resolve(r.result);
+                r.onerror = () => reject(r.error);
+                r.readAsDataURL(blob);
+            });
         }
 
         function processCsv(rawContent, fromSaved) {
@@ -1403,9 +1690,69 @@
             const journalFileInput = document.getElementById('journalFileInput');
             const clearBtn = document.getElementById('clearSavedButton');
 
+            // ---------- Screenshot modal wiring ----------
+            const shotsModalEl = document.getElementById('shotsModal');
+            const shotsDrop = document.getElementById('shotsDrop');
+            const shotsPickBtn = document.getElementById('shotsPickBtn');
+            const shotsFileInput = document.getElementById('shotsFileInput');
+            const lightbox = document.getElementById('shotLightbox');
+
+            if (shotsModalEl) {
+                shotsModalEl.addEventListener('shown.bs.modal', () => { if (shotsDrop) shotsDrop.focus(); });
+                shotsModalEl.addEventListener('hidden.bs.modal', () => {
+                    currentShotTrade = null;
+                    clearShotUrls();
+                    const grid = document.getElementById('shotsGrid');
+                    if (grid) grid.innerHTML = '';
+                });
+            }
+            // Ctrl+V anywhere while the screenshot window is open
+            document.addEventListener('paste', (e) => {
+                if (!currentShotTrade || !e.clipboardData) return;
+                const files = Array.from(e.clipboardData.items || [])
+                    .filter(it => it.kind === 'file')
+                    .map(it => it.getAsFile())
+                    .filter(Boolean);
+                if (files.length) { e.preventDefault(); addShotFiles(files); }
+            });
+            if (shotsDrop) {
+                ['dragenter', 'dragover'].forEach(ev => shotsDrop.addEventListener(ev, (e) => {
+                    e.preventDefault(); shotsDrop.classList.add('dragover');
+                }));
+                ['dragleave', 'drop'].forEach(ev => shotsDrop.addEventListener(ev, (e) => {
+                    e.preventDefault(); shotsDrop.classList.remove('dragover');
+                }));
+                shotsDrop.addEventListener('drop', (e) => addShotFiles(e.dataTransfer ? e.dataTransfer.files : []));
+            }
+            if (shotsPickBtn && shotsFileInput) {
+                shotsPickBtn.addEventListener('click', () => shotsFileInput.click());
+                shotsFileInput.addEventListener('change', async (e) => {
+                    await addShotFiles(e.target.files);
+                    e.target.value = null;
+                });
+            }
+            if (lightbox) {
+                lightbox.addEventListener('click', () => { lightbox.style.display = 'none'; lightbox.querySelector('img').src = ''; });
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape' && lightbox.style.display === 'flex') {
+                        e.stopPropagation();
+                        lightbox.style.display = 'none';
+                    }
+                }, true);
+            }
+
             if (exportBtn) {
-                exportBtn.addEventListener('click', () => {
-                    const blob = new Blob([JSON.stringify(loadJournal(), null, 2)], { type: 'application/json' });
+                exportBtn.addEventListener('click', async () => {
+                    const out = Object.assign({}, loadJournal());
+                    try {
+                        const shots = await allShots();
+                        if (shots.length) {
+                            out.__screenshots = await Promise.all(shots.map(async s => ({
+                                tradeId: s.tradeId, added: s.added, dataUrl: await blobToDataUrl(s.blob)
+                            })));
+                        }
+                    } catch (e) { /* no screenshot storage in this browser - export notes only */ }
+                    const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
                     const a = document.createElement('a');
                     a.href = URL.createObjectURL(blob);
                     a.download = `trading-journal-${new Date().toISOString().slice(0, 10)}.json`;
@@ -1421,16 +1768,38 @@
                     const file = event.target.files[0];
                     if (!file) return;
                     const reader = new FileReader();
-                    reader.onload = (e) => {
+                    reader.onload = async (e) => {
+                        let incoming;
                         try {
-                            const incoming = JSON.parse(e.target.result);
-                            if (typeof incoming !== 'object' || Array.isArray(incoming)) throw new Error('bad format');
-                            saveJournal(Object.assign(loadJournal(), incoming));
-                            renderJournalTable();
-                            showMessage(`Imported ${Object.keys(incoming).length} journal entries.`);
+                            incoming = JSON.parse(e.target.result);
+                            if (!incoming || typeof incoming !== 'object' || Array.isArray(incoming)) throw new Error('bad format');
                         } catch (err) {
                             showMessage('That file is not a journal export.');
+                            event.target.value = null;
+                            return;
                         }
+                        const shots = Array.isArray(incoming.__screenshots) ? incoming.__screenshots : [];
+                        delete incoming.__screenshots;
+                        saveJournal(Object.assign(loadJournal(), incoming));
+
+                        let addedShots = 0;
+                        if (shots.length) {
+                            try {
+                                const existing = await allShots();
+                                const seen = new Set(existing.map(s => s.tradeId + '|' + s.added));
+                                for (const s of shots) {
+                                    if (!s || !s.tradeId || typeof s.dataUrl !== 'string' || !s.dataUrl.startsWith('data:image/')) continue;
+                                    if (seen.has(s.tradeId + '|' + s.added)) continue;
+                                    const blob = await (await fetch(s.dataUrl)).blob();
+                                    await addShot({ tradeId: s.tradeId, blob, added: s.added || new Date().toISOString() });
+                                    seen.add(s.tradeId + '|' + s.added);
+                                    addedShots++;
+                                }
+                            } catch (err) { /* keep the notes even if screenshots fail */ }
+                        }
+                        renderJournalTable();
+                        const n = Object.keys(incoming).length;
+                        showMessage(`Imported ${n} journal entries` + (addedShots ? ` and ${addedShots} screenshot${addedShots > 1 ? 's' : ''}.` : '.'));
                         event.target.value = null;
                     };
                     reader.readAsText(file);
