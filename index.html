@@ -371,6 +371,27 @@
                 <button id="toggleRightPanelButton" class="btn btn-secondary w-100 mt-auto" type="button">
                     Hide Right Panel (Charts Only View)
                 </button>
+                <div class="card p-3 my-3">
+                    <div class="d-flex flex-wrap align-items-end gap-2">
+                        <div>
+                            <label for="range-start" class="form-label small text-secondary mb-1">Start date</label>
+                            <input type="date" class="form-control form-control-sm" id="range-start">
+                        </div>
+                        <div>
+                            <label for="range-end" class="form-label small text-secondary mb-1">End date</label>
+                            <input type="date" class="form-control form-control-sm" id="range-end">
+                        </div>
+                        <div class="btn-group btn-group-sm ms-auto" role="group" aria-label="Quick ranges">
+                            <button type="button" class="btn btn-outline-light" data-range="5D">5D</button>
+                            <button type="button" class="btn btn-outline-light" data-range="1M">1M</button>
+                            <button type="button" class="btn btn-outline-light" data-range="3M">3M</button>
+                            <button type="button" class="btn btn-outline-light" data-range="MTD">MTD</button>
+                            <button type="button" class="btn btn-outline-light" data-range="YTD">YTD</button>
+                            <button type="button" class="btn btn-outline-light" data-range="ALL">All</button>
+                        </div>
+                    </div>
+                    <div class="small text-secondary mt-2" id="range-summary"></div>
+                </div>
                 <div class="card p-4 d-flex flex-column mb-4">
                     <h5 class="card-title text-center text-white mb-3">Account Value Over Time (Daily Cash Flow)</h5>
                     <div class="chart-container flex-grow-1 mb-3">
@@ -815,7 +836,48 @@
             flag.innerHTML = issues ? `<span class="badge bg-warning text-dark">${issues} item(s) to check</span>` : '<span class="badge bg-success">balanced</span>';
         }
 
+        function getChartRange() {
+            const a = document.getElementById('range-start')?.value || '';
+            const b = document.getElementById('range-end')?.value || '';
+            return { start: a, end: b };
+        }
+        function inChartRange(dateKey, r) {
+            return (!r.start || dateKey >= r.start) && (!r.end || dateKey <= r.end);
+        }
+        function updateRangeSummary() {
+            const el = document.getElementById('range-summary');
+            if (!el) return;
+            const r = getChartRange();
+            const days = dailyRealizedProfitData.filter(d => parseFloat(d.Profit) !== 0 && inChartRange(d.Date, r));
+            const net = days.reduce((t, d) => t + parseFloat(d.Profit), 0);
+            const wins = days.filter(d => parseFloat(d.Profit) > 0).length;
+            const label = (r.start || r.end) ? `${r.start || 'start'} to ${r.end || 'today'}` : 'All dates';
+            el.innerHTML = `${label}: <strong class="${net >= 0 ? 'text-win' : 'text-loss'}">${net >= 0 ? '+' : '-'}$${Math.abs(net).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong> over ${days.length} trading day${days.length === 1 ? '' : 's'} (${wins} green, ${days.length - wins} red)`;
+        }
+        function rerenderRangeCharts() {
+            try { localStorage.setItem('tj_range', JSON.stringify(getChartRange())); } catch (e) {}
+            if (dailyCashFlowData.length) renderAccountValueChart(dailyCashFlowData);
+            renderDailyPnlChart(dailyRealizedProfitData);
+            updateRangeSummary();
+        }
+        function setQuickRange(code) {
+            const today = new Date();
+            const key = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            let start = '';
+            if (code === '5D') {            // last 5 trading days in the data
+                const days = dailyRealizedProfitData.map(d => d.Date);
+                start = days.length ? days[Math.max(0, days.length - 5)] : '';
+            } else if (code === '1M') { const d = new Date(today); d.setMonth(d.getMonth() - 1); start = key(d); }
+            else if (code === '3M') { const d = new Date(today); d.setMonth(d.getMonth() - 3); start = key(d); }
+            else if (code === 'MTD') { start = key(new Date(today.getFullYear(), today.getMonth(), 1)); }
+            else if (code === 'YTD') { start = key(new Date(today.getFullYear(), 0, 1)); }
+            document.getElementById('range-start').value = start;
+            document.getElementById('range-end').value = '';
+            rerenderRangeCharts();
+        }
+
         function renderDailyPnlChart(data) {
+            data = data.filter(d => inChartRange(d.Date, getChartRange()));
             const canvas = document.getElementById('dailyPnlChart');
             if (!canvas || typeof Chart === 'undefined') return;
             if (dailyPnlChart) dailyPnlChart.destroy();
@@ -877,11 +939,12 @@
             let dataPoints = [];
             let runningBalance = initialValue;
 
+            const range = getChartRange();
             data.forEach(day => {
-                labels.push(day.Date); 
                 const dailyCashChange = parseFloat(day.Profit); 
-                
                 runningBalance += dailyCashChange; 
+                if (!inChartRange(day.Date, range)) return;
+                labels.push(day.Date); 
                 dataPoints.push(runningBalance);
             });
             
@@ -1843,6 +1906,7 @@
             renderAccountValueChart(dailyCashFlowData);
             renderDailyPnlChart(dailyRealizedProfitData);
             renderSummaryStats(dailyRealizedProfitData, financialData);
+            updateRangeSummary();
             populateSymbolFilter(uniqueTradeSymbols);
             renderTradesTable(aggregatedTradePairsData, symbolFilterInput ? symbolFilterInput.value : '');
             renderJournalTable();
@@ -1937,6 +2001,17 @@
                     }
                 });
             }
+
+            // Chart date range (remembered in this browser)
+            try {
+                const savedRange = JSON.parse(localStorage.getItem('tj_range') || 'null');
+                if (savedRange) {
+                    document.getElementById('range-start').value = savedRange.start || '';
+                    document.getElementById('range-end').value = savedRange.end || '';
+                }
+            } catch (e) {}
+            ['range-start', 'range-end'].forEach(id => document.getElementById(id)?.addEventListener('change', rerenderRangeCharts));
+            document.querySelectorAll('[data-range]').forEach(btn => btn.addEventListener('click', () => setQuickRange(btn.dataset.range)));
 
             const lossCapInput = document.getElementById('loss-cap');
             if (lossCapInput) {
