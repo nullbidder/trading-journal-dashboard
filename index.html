@@ -250,8 +250,39 @@
         <div class="row g-4 mb-4">
             <div class="col-md-12">
                 <div class="card p-3 text-center">
-                    <div class="text-secondary small">Average Daily % Gain (Normalized by Initial Capital)</div>
+                    <div class="text-secondary small">Average Daily Return (vs. that day's starting account value)</div>
                     <div class="h3 mb-0" id="stat-avg-daily-percent-gain">0.00%</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-md-3">
+                <div class="card p-3 text-center">
+                    <div class="text-secondary small">Net Realized P/L</div>
+                    <div class="h3 mb-0" id="stat-net-pnl">$0.00</div>
+                    <div class="small text-secondary" id="stat-net-per-day">$0.00 / trading day</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-3 text-center">
+                    <div class="text-secondary small">Net P/L if losing days stopped at <span id="cap-label">$175</span></div>
+                    <div class="h3 mb-0" id="stat-capped-pnl">$0.00</div>
+                    <div class="small text-secondary" id="stat-capped-per-day">$0.00 / trading day</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-3 text-center">
+                    <div class="text-secondary small">Losing days that broke the cap</div>
+                    <div class="h3 mb-0 text-loss" id="stat-cap-breaks">0</div>
+                    <div class="small text-secondary" id="stat-cap-cost">$0.00 lost beyond the cap</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-3 text-center">
+                    <div class="text-secondary small">Largest losing day</div>
+                    <div class="h3 mb-0 text-loss" id="stat-worst-day">$0.00</div>
+                    <div class="small text-secondary" id="stat-worst-day-date">—</div>
                 </div>
             </div>
         </div>
@@ -296,17 +327,47 @@
                 </div>
             </div>
         </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-md-12">
+                <div class="card p-3">
+                    <button class="btn btn-link text-start text-white p-0 text-decoration-none" type="button" data-bs-toggle="collapse" data-bs-target="#reconBody" aria-expanded="false">
+                        &#9656; Reconciliation &mdash; how the account value and realized P/L add up <span class="small ms-2" id="recon-flag"></span>
+                    </button>
+                    <div class="collapse mt-3" id="reconBody">
+                        <div class="row g-4">
+                            <div class="col-lg-6">
+                                <h6 class="text-white">Cash (account value)</h6>
+                                <table class="table table-dark table-sm mb-0"><tbody id="recon-cash"></tbody></table>
+                            </div>
+                            <div class="col-lg-6">
+                                <h6 class="text-white">Realized P/L vs. trading cash</h6>
+                                <table class="table table-dark table-sm mb-0"><tbody id="recon-pnl"></tbody></table>
+                                <div class="small text-secondary mt-2" id="recon-notes"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 						 
         <div class="row g-4 mb-4">
             <div class="col-lg-6" id="chart-column">
                 <button id="toggleRightPanelButton" class="btn btn-secondary w-100 mt-auto" type="button">
                     Hide Right Panel (Charts Only View)
                 </button>
-                <div class="card p-4 h-100 d-flex flex-column">
+                <div class="card p-4 d-flex flex-column mb-4">
                     <h5 class="card-title text-center text-white mb-3">Account Value Over Time (Daily Cash Flow)</h5>
                     <div class="chart-container flex-grow-1 mb-3">
                         <canvas id="accountValueChart"></canvas>
                     </div>
+                </div>
+                <div class="card p-4 d-flex flex-column">
+                    <h5 class="card-title text-center text-white mb-3">Realized Profit / Loss Per Day</h5>
+                    <div class="chart-container flex-grow-1 mb-3">
+                        <canvas id="dailyPnlChart"></canvas>
+                    </div>
+                    <small class="text-muted text-center">Bars = each day's realized P/L. Line = running total. Dashed line = your daily loss cap.</small>
                 </div>
             </div>
 
@@ -439,7 +500,13 @@
                             <div class="mb-4">
                                 <label for="initial-value" class="form-label">Set Initial Account Value ($)</label>
                                 <input type="number" class="form-control" id="initial-value" value="42.66" min="0" step="100">
-                                <small class="form-text text-muted">This value is the starting point for your Account Value Chart.</small>
+                                <small class="form-text text-muted">The account value before the first day in your CSV. Use 0 if the CSV starts with your first deposit.</small>
+                            </div>
+
+                            <div class="mb-4">
+                                <label for="loss-cap" class="form-label">Daily Loss Cap ($)</label>
+                                <input type="number" class="form-control" id="loss-cap" value="175" min="0" step="25">
+                                <small class="form-text text-muted">Used for the "if losing days stopped at the cap" stats and the dashed line on the daily P/L chart.</small>
                             </div>
                             
                             <div class="mb-4">
@@ -514,6 +581,8 @@
 
         let totalWireReceivedAmount = 0;
         let totalWireSentAmount = 0;
+        let reconData = null;
+        let dailyPnlChart;
 
         const CHART_PROFIT_COLOR_HEX = '#89CFF0'; 
         const CHART_PROFIT_COLOR_RGB = 'rgba(137, 207, 240, 0.7)'; 
@@ -580,79 +649,198 @@
                  return;
             }
 
-            let totalGainCount = 0; 
-            let totalLossCount = 0; 
-            let totalGainAmount = 0; 
-            let totalLossAmount = 0; 
-            let totalNetProfit = 0; 
-            
-            let dailyPercentGainsSum = 0;
-            let totalTradingDays = 0;
+            const lossCap = Math.abs(parseFloat(document.getElementById('loss-cap')?.value)) || 0;
+            const fmt = v => `${v < 0 ? '-' : ''}$${Math.abs(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            const fmtSigned = v => `${v > 0 ? '+' : (v < 0 ? '-' : '')}$${Math.abs(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            const setClass = (el, v) => { el.classList.remove('text-win', 'text-loss'); el.classList.add(v >= 0 ? 'text-win' : 'text-loss'); };
+
+            // Account value at the start of each day (initial + all cash before that day),
+            // plus any deposits that same day, so a day you wire in and trade isn't divided by ~$0.
+            const startCapitalByDate = new Map();
+            {
+                let running = initialValue;
+                dailyCashFlowData.forEach(d => {
+                    const sameDayIn = reconData ? Math.max(0, reconData.nonTradeCashByDate.get(d.Date) || 0) : 0;
+                    startCapitalByDate.set(d.Date, running + sameDayIn);
+                    running += parseFloat(d.Profit);
+                });
+            }
+            const capitalFor = date => {
+                if (startCapitalByDate.has(date)) return startCapitalByDate.get(date);
+                // realized date with no cash row (e.g. auto-expired): use the last known balance before it
+                let best = initialValue;
+                dailyCashFlowData.forEach(d => { if (d.Date <= date) best = startCapitalByDate.get(d.Date); });
+                return best;
+            };
+
+            let totalGainCount = 0, totalLossCount = 0, totalGainAmount = 0, totalLossAmount = 0, totalNetProfit = 0;
+            const gainPcts = [], lossPcts = [], allPcts = [];
+            let cappedNet = 0, capBreaks = 0, capCost = 0, worst = 0, worstDate = '';
 
             dailySummary.forEach(day => {
-                const profit = parseFloat(day.Profit); 
-                
-                if (profit > 0) {
-                    totalGainCount++;
-                    totalGainAmount += profit;
-                } else if (profit < 0) {
-                    totalLossCount++;
-                    totalLossAmount += profit; 
-                }
+                const profit = parseFloat(day.Profit);
+                if (profit === 0) return;
+                if (profit > 0) { totalGainCount++; totalGainAmount += profit; }
+                else { totalLossCount++; totalLossAmount += profit; }
                 totalNetProfit += profit;
-                
-                if (profit !== 0) {
-                    totalTradingDays++;
-                    if (initialValue > 0) {
-                         dailyPercentGainsSum += (profit / initialValue) * 100;
+
+                const cap = capitalFor(day.Date);
+                if (cap > 1) {
+                    const pct = (profit / cap) * 100;
+                    allPcts.push(pct);
+                    (profit > 0 ? gainPcts : lossPcts).push(pct);
+                }
+
+                if (lossCap > 0 && profit < -lossCap) {
+                    capBreaks++;
+                    capCost += (-lossCap - profit);
+                    cappedNet += -lossCap;
+                } else {
+                    cappedNet += profit;
+                }
+                if (profit < worst) { worst = profit; worstDate = day.Date; }
+            });
+
+            const avg = arr => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+            const tradingDays = totalGainCount + totalLossCount;
+            const avgDailyGainPNL = totalGainCount > 0 ? totalGainAmount / totalGainCount : 0;
+            const avgDailyLossPNL = totalLossCount > 0 ? totalLossAmount / totalLossCount : 0;
+
+            const currentAccountValue = dailyCashFlowData.reduce((balance, day) => balance + parseFloat(day.Profit), initialValue);
+            const totalClosedPositions = aggregatedTradePairsData.length;
+            const winningDayRate = tradingDays > 0 ? (totalGainCount / tradingDays) * 100 : 0;
+            const avgPnlPerTrade = totalClosedPositions > 0 ? totalNetProfit / totalClosedPositions : 0;
+
+            document.getElementById('stat-current-value').innerText = fmt(currentAccountValue);
+            document.getElementById('stat-total-trades').innerText = totalClosedPositions.toLocaleString();
+            document.getElementById('stat-avg-gain-pnl').innerText = fmtSigned(avgDailyGainPNL);
+            document.getElementById('stat-avg-gain-percent').innerText = `${avg(gainPcts) >= 0 ? '+' : ''}${avg(gainPcts).toFixed(1)}% of that day's account`;
+            document.getElementById('stat-avg-loss-pnl').innerText = fmtSigned(avgDailyLossPNL);
+            document.getElementById('stat-avg-loss-percent').innerText = `${avg(lossPcts).toFixed(1)}% of that day's account`;
+
+            document.getElementById('stat-gross-profit').innerText = fmt(totalGainAmount);
+            document.getElementById('stat-gross-loss').innerText = fmtSigned(totalLossAmount);
+            document.getElementById('stat-win-rate').innerText = `${winningDayRate.toFixed(2)}%`;
+
+            const avgPnlElement = document.getElementById('stat-avg-pnl');
+            avgPnlElement.innerText = fmtSigned(avgPnlPerTrade);
+            avgPnlElement.classList.remove('text-win', 'text-loss', 'text-secondary');
+            avgPnlElement.classList.add(avgPnlPerTrade > 0 ? 'text-win' : (avgPnlPerTrade < 0 ? 'text-loss' : 'text-secondary'));
+
+            const avgPctEl = document.getElementById('stat-avg-daily-percent-gain');
+            const avgPct = avg(allPcts);
+            avgPctEl.innerText = `${avgPct >= 0 ? '+' : ''}${avgPct.toFixed(2)}%`;
+            setClass(avgPctEl, avgPct);
+
+            // Net / capped stats
+            const netEl = document.getElementById('stat-net-pnl');
+            if (netEl) {
+                netEl.innerText = fmtSigned(totalNetProfit); setClass(netEl, totalNetProfit);
+                document.getElementById('stat-net-per-day').innerText = `${fmtSigned(tradingDays ? totalNetProfit / tradingDays : 0)} / trading day (${tradingDays} days)`;
+                const cEl = document.getElementById('stat-capped-pnl');
+                cEl.innerText = fmtSigned(cappedNet); setClass(cEl, cappedNet);
+                document.getElementById('stat-capped-per-day').innerText = `${fmtSigned(tradingDays ? cappedNet / tradingDays : 0)} / trading day`;
+                document.getElementById('cap-label').innerText = `$${lossCap.toLocaleString()}`;
+                document.getElementById('stat-cap-breaks').innerText = `${capBreaks} of ${totalLossCount}`;
+                document.getElementById('stat-cap-cost').innerText = `${fmt(capCost)} lost beyond the cap`;
+                document.getElementById('stat-worst-day').innerText = fmtSigned(worst);
+                document.getElementById('stat-worst-day-date').innerText = worstDate || '—';
+            }
+
+            if (wireReceivedEl) wireReceivedEl.innerText = fmt(Math.abs(totalWireReceivedAmount));
+            if (wireSentEl) wireSentEl.innerText = fmt(Math.abs(totalWireSentAmount));
+
+            renderReconciliation(initialValue, currentAccountValue, totalNetProfit);
+        }
+
+        function renderReconciliation(initialValue, currentAccountValue, realizedTotal) {
+            const cashBody = document.getElementById('recon-cash');
+            const pnlBody = document.getElementById('recon-pnl');
+            const notes = document.getElementById('recon-notes');
+            const flag = document.getElementById('recon-flag');
+            if (!cashBody || !reconData) return;
+            const fmt = v => `${v < 0 ? '-' : (v > 0 ? '+' : '')}$${Math.abs(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+            const row = (label, val, strong) => `<tr><td>${strong ? '<strong>' : ''}${esc(label)}${strong ? '</strong>' : ''}</td><td class="text-end ${val < 0 ? 'text-loss' : ''}">${strong ? '<strong>' : ''}${fmt(val)}${strong ? '</strong>' : ''}</td></tr>`;
+
+            const TRADE_ACTIONS = ['Buy to Open', 'Sell to Close', 'Expired'];
+            const TRADE_LIKE = /buy|sell|exercise|assign|exchange|settle/i;
+            let html = row('Starting value (Settings)', initialValue);
+            const others = [];
+            reconData.actionTotals.forEach((v, action) => { if (!TRADE_ACTIONS.includes(action)) others.push([action, v]); });
+            others.sort((a, b) => Math.abs(b[1].amount) - Math.abs(a[1].amount));
+            others.forEach(([action, v]) => { html += row(`${action} (${v.count})`, v.amount); });
+            html += row('Option trades (buys, sells, expiries)', reconData.tradeCashTotal);
+            html += row('= Current account value', currentAccountValue, true);
+            cashBody.innerHTML = html;
+
+            const unmatchedSum = reconData.unmatchedSells.reduce((s, x) => s + x.Amount, 0);
+            const openCost = reconData.openPositions.reduce((s, x) => s + x.Amount, 0);
+            const expiredSum = reconData.autoExpired.reduce((s, x) => s + x.Amount, 0);
+            let p = row('Option trade cash (from left)', reconData.tradeCashTotal);
+            p += row(`Sells with no matching buy — excluded (${reconData.unmatchedSells.length})`, -unmatchedSum);
+            p += row(`Still-open positions — cost not yet realized (${reconData.openPositions.length})`, -openCost);
+            p += row('= Realized P/L (calendar total)', realizedTotal, true);
+            pnlBody.innerHTML = p;
+
+            const msgs = [];
+            const tradeLikeOthers = others.filter(([a]) => TRADE_LIKE.test(a));
+            if (tradeLikeOthers.length) msgs.push(`Trade-type rows not counted in realized P/L: ${tradeLikeOthers.map(([a, v]) => `${esc(a)} (${v.count}, ${fmt(v.amount)})`).join(', ')}. They are included in account value.`);
+            if (reconData.autoExpired.length) msgs.push(`${reconData.autoExpired.length} option buy(s) had no sell or expiry row and are past expiration, so they were booked as expired worthless (${fmt(expiredSum)}): ${reconData.autoExpired.slice(0, 6).map(x => `${esc(x.Symbol)} on ${x.Date}`).join('; ')}${reconData.autoExpired.length > 6 ? '…' : ''}.`);
+            if (reconData.unmatchedSells.length) msgs.push(`Sells with no matching buy (usually bought before the CSV starts): ${reconData.unmatchedSells.slice(0, 6).map(x => `${esc(x.Symbol)} on ${x.Date} ${fmt(x.Amount)}`).join('; ')}${reconData.unmatchedSells.length > 6 ? '…' : ''}. Upload a CSV that starts earlier to include them.`);
+            if (reconData.openPositions.length) msgs.push(`Open: ${reconData.openPositions.map(x => `${esc(x.Symbol)} x${x.Quantity}`).join('; ')}.`);
+            notes.innerHTML = msgs.join('<br>');
+            const issues = reconData.unmatchedSells.length + reconData.autoExpired.length + tradeLikeOthers.length;
+            flag.innerHTML = issues ? `<span class="badge bg-warning text-dark">${issues} item(s) to check</span>` : '<span class="badge bg-success">balanced</span>';
+        }
+
+        function renderDailyPnlChart(data) {
+            const canvas = document.getElementById('dailyPnlChart');
+            if (!canvas || typeof Chart === 'undefined') return;
+            if (dailyPnlChart) dailyPnlChart.destroy();
+            const lossCap = Math.abs(parseFloat(document.getElementById('loss-cap')?.value)) || 0;
+            const labels = [], values = [], cumulative = [];
+            let run = 0;
+            data.forEach(d => {
+                const v = parseFloat(d.Profit);
+                if (v === 0) return;
+                labels.push(d.Date); values.push(+v.toFixed(2));
+                run += v; cumulative.push(+run.toFixed(2));
+            });
+            const datasets = [
+                {
+                    type: 'bar', label: 'Daily P/L ($)', data: values, yAxisID: 'y', order: 2,
+                    backgroundColor: values.map(v => v >= 0 ? CHART_PROFIT_COLOR_RGB : CHART_LOSS_COLOR_RGB),
+                    borderColor: values.map(v => v >= 0 ? CHART_PROFIT_COLOR_HEX : CHART_LOSS_COLOR_HEX),
+                    borderWidth: 1
+                },
+                {
+                    type: 'line', label: 'Running total ($)', data: cumulative, yAxisID: 'y1', order: 1,
+                    borderColor: '#f8f9fa', backgroundColor: '#f8f9fa', borderWidth: 2, pointRadius: 0, tension: 0
+                }
+            ];
+            if (lossCap > 0) {
+                datasets.push({
+                    type: 'line', label: `Loss cap (-$${lossCap})`, data: labels.map(() => -lossCap), yAxisID: 'y', order: 0,
+                    borderColor: '#ffc107', borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0
+                });
+            }
+            dailyPnlChart = new Chart(canvas.getContext('2d'), {
+                data: { labels, datasets },
+                options: {
+                    responsive: true, maintainAspectRatio: true,
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        y: { title: { display: true, text: 'Daily P/L ($)', color: 'white' }, ticks: { color: 'white' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+                        y1: { position: 'right', title: { display: true, text: 'Running total ($)', color: 'white' }, ticks: { color: 'white' }, grid: { drawOnChartArea: false } },
+                        x: { ticks: { color: 'white' }, grid: { color: 'rgba(255,255,255,0.1)' } }
+                    },
+                    plugins: {
+                        legend: { labels: { color: 'white' } },
+                        tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.parsed.y < 0 ? '-' : ''}$${Math.abs(c.parsed.y).toFixed(2)}` } }
                     }
                 }
             });
-
-            const avgDailyGainPNL = totalGainCount > 0 ? (totalGainAmount / totalGainCount) : 0;
-            const avgDailyLossPNL = totalLossCount > 0 ? (totalLossAmount / totalLossCount) : 0;
-            
-            const avgDailyGainPercent = initialValue > 0 ? (avgDailyGainPNL / initialValue) * 100 : 0;
-            const avgDailyLossPercent = initialValue > 0 ? (avgDailyLossPNL / initialValue) * 100 : 0;
-            
-            const avgDailyPercentGain = totalTradingDays > 0 ? (dailyPercentGainsSum / totalTradingDays) : 0; 
-            
-            let currentAccountValue = dailyCashFlowData.reduce((balance, day) => 
-                balance + parseFloat(day.Profit), initialValue
-            );
-
-            const totalClosedPositions = aggregatedTradePairsData.length;
-            const totalDays = totalGainCount + totalLossCount;
-            const winningDayRate = totalDays > 0 ? (totalGainCount / totalDays) * 100 : 0;
-            const avgPnlPerTrade = totalClosedPositions > 0 ? totalNetProfit / totalClosedPositions : 0;
-            
-            document.getElementById('stat-current-value').innerText = `$${currentAccountValue.toFixed(2)}`;
-            document.getElementById('stat-total-trades').innerText = totalClosedPositions.toLocaleString(); 
-            document.getElementById('stat-avg-gain-pnl').innerText = `$${avgDailyGainPNL.toFixed(2)}`;
-            document.getElementById('stat-avg-gain-percent').innerText = `${avgDailyGainPercent.toFixed(2)}%`;
-            document.getElementById('stat-avg-loss-pnl').innerText = `$${Math.abs(avgDailyLossPNL).toFixed(2)}`; 
-            document.getElementById('stat-avg-loss-percent').innerText = `${Math.abs(avgDailyLossPercent).toFixed(2)}%`;
-
-            const grossLossAbs = Math.abs(totalLossAmount).toFixed(2);
-            const avgPnlClass = avgPnlPerTrade > 0 ? 'text-win' : (avgPnlPerTrade < 0 ? 'text-loss' : 'text-secondary');
-            
-            document.getElementById('stat-gross-profit').innerText = `$${totalGainAmount.toFixed(2)}`;
-            document.getElementById('stat-gross-loss').innerText = `$${grossLossAbs}`; 
-            document.getElementById('stat-win-rate').innerText = `${winningDayRate.toFixed(2)}%`; 
-
-            document.getElementById('stat-avg-pnl').innerText = `${avgPnlPerTrade >= 0 ? '+' : ''}$${Math.abs(avgPnlPerTrade).toFixed(2)}`;
-            
-            const avgPnlElement = document.getElementById('stat-avg-pnl');
-            avgPnlElement.classList.remove('text-win', 'text-loss', 'text-secondary');
-            avgPnlElement.classList.add(avgPnlClass);
-            
-            const avgDailyPercentGainElement = document.getElementById('stat-avg-daily-percent-gain');
-            avgDailyPercentGainElement.innerText = `${avgDailyPercentGain >= 0 ? '+' : ''}${Math.abs(avgDailyPercentGain).toFixed(2)}%`;
-            avgDailyPercentGainElement.classList.remove('text-win', 'text-loss');
-            avgDailyPercentGainElement.classList.add(avgDailyPercentGain >= 0 ? 'text-win' : 'text-loss');
-			
-            if (wireReceivedEl) wireReceivedEl.innerText = `$${Math.abs(totalWireReceivedAmount).toFixed(2)}`;
-            if (wireSentEl) wireSentEl.innerText = `$${Math.abs(totalWireSentAmount).toFixed(2)}`; 
         }
 
         function renderAccountValueChart(data) {
@@ -742,7 +930,7 @@
                 const calendarDate = day.Date; 
 
                 events.push({
-                    title: `${isProfit ? '+' : ''}$${Math.abs(profit).toFixed(2)}`,
+                    title: `${isProfit ? '+' : (isLoss ? '-' : '')}$${Math.abs(profit).toFixed(2)}`,
                     start: calendarDate,
                     allDay: true, 
                     classNames: isProfit ? ['event-profit'] : (isLoss ? ['event-loss'] : ['event-neutral']),
@@ -918,13 +1106,31 @@
             const tradePairs = [];
             const uniqueSymbolsSet = new Set(); 
 			
-            totalWireReceivedAmount = 0; 
+            totalWireReceivedAmount = 0;
             totalWireSentAmount = 0;
+
+            const TRADE_ACTIONS = ['Buy to Open', 'Sell to Close', 'Expired'];
+            const actionTotals = new Map();        // Action -> { amount, count }
+            const nonTradeCashByDate = new Map();  // dateKey -> deposits/withdrawals/fees that day
+            let tradeCashTotal = 0;
+            const unmatchedSells = [];              // sells with no matching buy (excluded from P/L)
+            const autoExpired = [];                 // buys never closed, past expiry -> booked as losses
 
             data.forEach(transaction => {
                 const dateKey = formatDateToKey(transaction.Date);
-                const amount = transaction.Amount; 
-                
+                const amount = transaction.Amount;
+                const action = transaction.Action || '(blank)';
+
+                if (!actionTotals.has(action)) actionTotals.set(action, { amount: 0, count: 0 });
+                const at = actionTotals.get(action);
+                at.amount += amount; at.count++;
+
+                if (TRADE_ACTIONS.includes(action)) {
+                    tradeCashTotal += amount;
+                } else {
+                    nonTradeCashByDate.set(dateKey, (nonTradeCashByDate.get(dateKey) || 0) + amount);
+                }
+
                 if (transaction.Action === 'Wire Received') {
                     totalWireReceivedAmount += amount;
                 } else if (transaction.Action === 'Wire Sent') {
@@ -1020,10 +1226,11 @@
                             qtyToClose -= qtyMatch;
                         }
                         
-                        // Only add unmatched proceeds for actual sells (expiries have $0 proceeds).
+                        // Sold more than we have buys for (bought before the CSV starts):
+                        // we don't know the cost, so don't count the proceeds as profit.
                         if (qtyToClose > 0 && trade.Action === 'Sell to Close') {
                             const unmatchedProceeds = (qtyToClose / effectiveQty) * effectiveAmount;
-                            netProfitTotal += unmatchedProceeds;
+                            unmatchedSells.push({ Date: dateKey, Symbol: rawSymbol, Quantity: qtyToClose, Amount: unmatchedProceeds });
                         }
     
                         tradePairs.push(...closedPairs);
@@ -1035,15 +1242,44 @@
                             dailyRealizedProfitMap.set(dateKey, dailyRealizedProfitMap.get(dateKey) + netProfitTotal);
                         }
                     } else if (trade.Action === 'Sell to Close') {
-                        // Unmatched sell (no open buy found) — still count proceeds as income.
-                        if (!dailyRealizedProfitMap.has(dateKey)) {
-                            dailyRealizedProfitMap.set(dateKey, 0);
-                        }
-                        dailyRealizedProfitMap.set(dateKey, dailyRealizedProfitMap.get(dateKey) + trade.Amount); 
+                        // Unmatched sell (no open buy found, e.g. bought before the CSV starts).
+                        // The cost is unknown, so the proceeds are NOT counted as profit.
+                        unmatchedSells.push({ Date: dateKey, Symbol: rawSymbol, Quantity: Math.abs(trade.Quantity), Amount: trade.Amount });
                     }
                     // Expired with no matching buy = nothing to do (position already cleared externally).
                 }
             });
+
+            // Buys that were never closed. If the option's expiration date has passed,
+            // it expired (worthless if no close/settlement row exists): book the cost as a loss
+            // on the expiration date. Otherwise it is still an open position.
+            const todayKey = formatDateToKey(new Date(Date.UTC(new Date().getFullYear(), new Date().getMonth(), new Date().getDate())));
+            const openPositions = [];
+            Object.keys(unmatchedBuys).forEach(sym => {
+                unmatchedBuys[sym].forEach(buy => {
+                    const m = String(sym).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+                    let expKey = null;
+                    if (m) expKey = `${m[3]}-${m[1].padStart(2, '0')}-${m[2].padStart(2, '0')}`;
+                    if (expKey && expKey < todayKey) {
+                        const loss = buy.Amount; // negative (cost)
+                        dailyRealizedProfitMap.set(expKey, (dailyRealizedProfitMap.get(expKey) || 0) + loss);
+                        tradePairs.push({
+                            OpenDate: formatDateToKey(buy.Date),
+                            CloseDate: expKey,
+                            Symbol: sym,
+                            NetProfit: loss.toFixed(2),
+                            OpenAmount: loss.toFixed(2),
+                            Quantity: buy.Quantity.toFixed(0),
+                            OpenPrice: buy.Price.toFixed(2)
+                        });
+                        autoExpired.push({ Date: expKey, Symbol: sym, Quantity: buy.Quantity, Amount: loss });
+                    } else {
+                        openPositions.push({ Date: formatDateToKey(buy.Date), Symbol: sym, Quantity: buy.Quantity, Amount: buy.Amount });
+                    }
+                });
+            });
+
+            reconData = { actionTotals, nonTradeCashByDate, tradeCashTotal, unmatchedSells, autoExpired, openPositions };
 
             const cashFlowSummary = Array.from(dailyCashMap).map(([dateString, profit]) => ({ Date: dateString, Profit: profit }));
             const realizedProfitSummary = Array.from(dailyRealizedProfitMap).map(([dateString, profit]) => ({ Date: dateString, Profit: profit }));
@@ -1584,6 +1820,7 @@
             const symbolFilterInput = document.getElementById('symbolFilterInput');
             initializeCalendar(dailyRealizedProfitData);
             renderAccountValueChart(dailyCashFlowData);
+            renderDailyPnlChart(dailyRealizedProfitData);
             renderSummaryStats(dailyRealizedProfitData, financialData);
             populateSymbolFilter(uniqueTradeSymbols);
             renderTradesTable(aggregatedTradePairsData, symbolFilterInput ? symbolFilterInput.value : '');
@@ -1612,6 +1849,7 @@
                 chartColumn.classList.remove('col-lg-6');
                 chartColumn.classList.add('col-lg-12');
                 renderAccountValueChart(dailyCashFlowData); 
+                renderDailyPnlChart(dailyRealizedProfitData);
             } else {
                 button.textContent = 'Hide Right Panel (Charts Only View)';
                 rightPanelTabs.classList.add('col-lg-6');
@@ -1619,6 +1857,7 @@
                 chartColumn.classList.remove('col-lg-12');
                 chartColumn.classList.add('col-lg-6');
                 renderAccountValueChart(dailyCashFlowData); 
+                renderDailyPnlChart(dailyRealizedProfitData);
                 
                 const calendarTabBtn = document.getElementById('calendar-tab-btn');
                 if (calendarTabBtn && calendarTabBtn.classList.contains('active')) {
@@ -1675,6 +1914,17 @@
                     if (dailyCashFlowData.length > 0) {
                         renderAccountValueChart(dailyCashFlowData);
                     }
+                });
+            }
+
+            const lossCapInput = document.getElementById('loss-cap');
+            if (lossCapInput) {
+                const savedCap = storeGet('tj_losscap');
+                if (savedCap !== null) lossCapInput.value = savedCap;
+                lossCapInput.addEventListener('change', () => {
+                    storeSet('tj_losscap', lossCapInput.value);
+                    renderSummaryStats(dailyRealizedProfitData, financialData);
+                    renderDailyPnlChart(dailyRealizedProfitData);
                 });
             }
 
