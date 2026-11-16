@@ -257,28 +257,21 @@
         </div>
 
         <div class="row g-4 mb-4">
-            <div class="col-md-3">
+            <div class="col-md-4">
                 <div class="card p-3 text-center">
                     <div class="text-secondary small">Net Realized P/L</div>
                     <div class="h3 mb-0" id="stat-net-pnl">$0.00</div>
                     <div class="small text-secondary" id="stat-net-per-day">$0.00 / trading day</div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="card p-3 text-center">
-                    <div class="text-secondary small">Net P/L if losing days stopped at <span id="cap-label">$175</span></div>
-                    <div class="h3 mb-0" id="stat-capped-pnl">$0.00</div>
-                    <div class="small text-secondary" id="stat-capped-per-day">$0.00 / trading day</div>
-                </div>
-            </div>
-            <div class="col-md-3">
+            <div class="col-md-4">
                 <div class="card p-3 text-center">
                     <div class="text-secondary small">Losing days that broke the cap</div>
                     <div class="h3 mb-0 text-loss" id="stat-cap-breaks">0</div>
                     <div class="small text-secondary" id="stat-cap-cost">$0.00 lost beyond the cap</div>
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-4">
                 <div class="card p-3 text-center">
                     <div class="text-secondary small">Largest losing day</div>
                     <div class="h3 mb-0 text-loss" id="stat-worst-day">$0.00</div>
@@ -506,7 +499,7 @@
                             <div class="mb-4">
                                 <label for="loss-cap" class="form-label">Daily Loss Cap ($)</label>
                                 <input type="number" class="form-control" id="loss-cap" value="175" min="0" step="25">
-                                <small class="form-text text-muted">Used for the "if losing days stopped at the cap" stats and the dashed line on the daily P/L chart.</small>
+                                <small class="form-text text-muted">Used for the "losing days that broke the cap" stat and the dashed line on the daily P/L chart.</small>
                             </div>
                             
                             <div class="mb-4">
@@ -665,7 +658,17 @@
                     running += parseFloat(d.Profit);
                 });
             }
-            const capitalFor = date => {
+            // Money actually put into positions that day is a floor on the capital used
+            // (deposits can land on a different day than the trade).
+            const openCostByDate = new Map();
+            financialData.forEach(t => {
+                if (t.Action === 'Buy to Open') {
+                    const k = formatDateToKey(t.Date);
+                    openCostByDate.set(k, (openCostByDate.get(k) || 0) + Math.abs(t.Amount));
+                }
+            });
+            const capitalFor = date => Math.max(baseCapitalFor(date), openCostByDate.get(date) || 0);
+            const baseCapitalFor = date => {
                 if (startCapitalByDate.has(date)) return startCapitalByDate.get(date);
                 // realized date with no cash row (e.g. auto-expired): use the last known balance before it
                 let best = initialValue;
@@ -737,10 +740,6 @@
             if (netEl) {
                 netEl.innerText = fmtSigned(totalNetProfit); setClass(netEl, totalNetProfit);
                 document.getElementById('stat-net-per-day').innerText = `${fmtSigned(tradingDays ? totalNetProfit / tradingDays : 0)} / trading day (${tradingDays} days)`;
-                const cEl = document.getElementById('stat-capped-pnl');
-                cEl.innerText = fmtSigned(cappedNet); setClass(cEl, cappedNet);
-                document.getElementById('stat-capped-per-day').innerText = `${fmtSigned(tradingDays ? cappedNet / tradingDays : 0)} / trading day`;
-                document.getElementById('cap-label').innerText = `$${lossCap.toLocaleString()}`;
                 document.getElementById('stat-cap-breaks').innerText = `${capBreaks} of ${totalLossCount}`;
                 document.getElementById('stat-cap-cost').innerText = `${fmt(capCost)} lost beyond the cap`;
                 document.getElementById('stat-worst-day').innerText = fmtSigned(worst);
