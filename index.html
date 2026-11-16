@@ -209,12 +209,34 @@
             --bs-table-hover-bg: #353a3f;
             --bs-table-border-color: #a96094;
         }
+        /* ---------- Live futures ticker ---------- */
+        .ticker-bar { display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
+        .ticker-status { display:flex; align-items:center; gap:6px; font-size:.75rem; color:#9aa0a8; min-width:150px; }
+        .live-dot { width:10px; height:10px; border-radius:50%; background:#32cd32; box-shadow:0 0 0 0 rgba(50,205,50,.7); animation:livePulse 1.6s infinite; }
+        .live-dot.stale { background:#ffa500; animation:none; }
+        .live-dot.off { background:#cd5c5c; animation:none; }
+        @keyframes livePulse { 0% { box-shadow:0 0 0 0 rgba(50,205,50,.7);} 70% { box-shadow:0 0 0 8px rgba(50,205,50,0);} 100% { box-shadow:0 0 0 0 rgba(50,205,50,0);} }
+        .ticker-item { flex:1 1 300px; display:flex; align-items:center; gap:14px; padding:8px 14px; border-radius:8px; background:#2d3135; border:1px solid #a96094; transition:background-color 1s ease; }
+        .ticker-item.flash-up { background-color:#24607f; transition:none; }
+        .ticker-item.flash-down { background-color:#5e2a73; transition:none; }
+        .ticker-sym { font-weight:700; color:#adb5bd; width:36px; }
+        .ticker-px { font-size:1.5rem; font-weight:700; color:#fff; min-width:120px; font-variant-numeric:tabular-nums; }
+        .ticker-chg { font-size:.95rem; font-variant-numeric:tabular-nums; min-width:140px; }
+        .ticker-item canvas { margin-left:auto; }
     </style>
 </head>
 <body>
 
     <div class="container-fluid" style="max-width: 3400px;">
         <h1 class="text-center mb-4 text-white">Trading Journal</h1>
+
+        <div class="card p-3 mb-4">
+            <div class="ticker-bar">
+                <div class="ticker-status"><span class="live-dot off" id="tk-dot"></span><strong>LIVE</strong><span id="tk-status">connecting...</span></div>
+                <div class="ticker-item" id="tk-ES"><span class="ticker-sym">/ES</span><span class="ticker-px">--</span><span class="ticker-chg"></span><canvas width="140" height="36"></canvas></div>
+                <div class="ticker-item" id="tk-NQ"><span class="ticker-sym">/NQ</span><span class="ticker-px">--</span><span class="ticker-chg"></span><canvas width="140" height="36"></canvas></div>
+            </div>
+        </div>
 
         <div id="messageBox" role="alert"></div>
 
@@ -2068,6 +2090,85 @@
             const savedCsv = storeGet(STORE.csv);
             if (savedCsv) processCsv(savedCsv, true);
         });
+
+        // ==========================================
+        // LIVE /ES + /NQ TICKER (via LiveQuotes.ps1 running on this PC)
+        // Browsers can't call Yahoo directly (blocked), so a tiny local bridge
+        // fetches the quotes and serves them at http://localhost:8787/quotes.
+        // ==========================================
+        const QUOTES_URL = 'http://localhost:8787/quotes';
+        const tk = { last: {}, lastOk: null };
+
+        function drawSpark(canvas, pts) {
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width, h = canvas.height;
+            ctx.clearRect(0, 0, w, h);
+            if (!pts || pts.length < 2) return;
+            const min = Math.min(...pts), max = Math.max(...pts) === min ? min + 1 : Math.max(...pts);
+            const up = pts[pts.length - 1] >= pts[0];
+            ctx.strokeStyle = up ? CHART_PROFIT_COLOR_HEX : CHART_LOSS_COLOR_HEX;
+            ctx.lineWidth = 1.6;
+            ctx.beginPath();
+            pts.forEach((v, i) => {
+                const x = 3 + (w - 6) * i / (pts.length - 1);
+                const y = 3 + (h - 6) * (1 - (v - min) / (max - min));
+                i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+            });
+            ctx.stroke();
+            const lx = w - 3, ly = 3 + (h - 6) * (1 - (pts[pts.length - 1] - min) / (max - min));
+            ctx.fillStyle = ctx.strokeStyle;
+            ctx.beginPath(); ctx.arc(lx, ly, 3, 0, Math.PI * 2); ctx.fill();
+        }
+
+        function updateTicker(key, q) {
+            const el = document.getElementById('tk-' + key);
+            if (!el || !q) return;
+            const px = Number(q.Last), prev = Number(q.Prev);
+            const chg = px - prev, pct = prev ? chg / prev * 100 : 0;
+            const old = tk.last[key];
+            if (old !== undefined && px !== old) {
+                const cls = px > old ? 'flash-up' : 'flash-down';
+                el.classList.remove('flash-up', 'flash-down');
+                void el.offsetWidth;                // restart the fade
+                el.classList.add(cls);
+                setTimeout(() => el.classList.remove(cls), 120);
+            }
+            tk.last[key] = px;
+            el.querySelector('.ticker-px').textContent = px.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            const c = el.querySelector('.ticker-chg');
+            const sign = chg >= 0 ? '+' : '-';
+            c.textContent = `${sign}${Math.abs(chg).toFixed(2)}  (${sign}${Math.abs(pct).toFixed(2)}%)`;
+            c.style.color = chg >= 0 ? CHART_PROFIT_COLOR_HEX : CHART_LOSS_COLOR_HEX;
+            const spark = Array.isArray(q.Spark) ? q.Spark.map(Number) : (q.Spark != null ? [Number(q.Spark)] : []);
+            drawSpark(el.querySelector('canvas'), spark);
+        }
+
+        function setTickerStatus() {
+            const dot = document.getElementById('tk-dot');
+            const st = document.getElementById('tk-status');
+            if (!dot) return;
+            const age = tk.lastOk ? (Date.now() - tk.lastOk) / 1000 : Infinity;
+            dot.classList.remove('stale', 'off');
+            if (!tk.lastOk) { dot.classList.add('off'); st.textContent = 'offline: start LiveQuotes.ps1'; }
+            else if (age > 15) { dot.classList.add('stale'); st.textContent = `stale (${Math.round(age)}s)`; }
+            else st.textContent = `updated ${Math.round(age)}s ago`;
+        }
+
+        async function pollQuotes() {
+            try {
+                const r = await fetch(QUOTES_URL, { cache: 'no-store' });
+                const d = await r.json();
+                if (d.ok) {
+                    updateTicker('ES', d.ES);
+                    updateTicker('NQ', d.NQ);
+                    tk.lastOk = Date.now();
+                }
+            } catch (e) { /* bridge not running */ }
+            setTickerStatus();
+        }
+        pollQuotes();
+        setInterval(pollQuotes, 5000);
+        setInterval(setTickerStatus, 1000);
     </script>
 </body>
 </html>
