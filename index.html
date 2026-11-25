@@ -219,13 +219,16 @@
         .live-dot.stale { background:#ffa500; animation:none; }
         .live-dot.off { background:#cd5c5c; animation:none; }
         @keyframes livePulse { 0% { box-shadow:0 0 0 0 rgba(50,205,50,.7);} 70% { box-shadow:0 0 0 8px rgba(50,205,50,0);} 100% { box-shadow:0 0 0 0 rgba(50,205,50,0);} }
-        .ticker-item { flex:1 1 300px; display:flex; align-items:center; gap:14px; padding:8px 14px; border-radius:8px; background:#181b21; border:1px solid #262a33; transition:background-color 1s ease; }
+        .ticker-item { flex:1 1 380px; display:flex; flex-direction:column; gap:6px; padding:10px 14px; border-radius:10px; background:#181b21; border:1px solid #262a33; transition:background-color 1s ease; min-width:0; }
+        .tk-head { display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; }
+        .tk-prev { margin-left:auto; font-size:.72rem; color:var(--color-muted); }
+        .tk-chart { width:100%; height:160px; display:block; }
         .ticker-item.flash-up { background-color:#14532d; transition:none; }
         .ticker-item.flash-down { background-color:#7f1d1d; transition:none; }
         .ticker-sym { font-weight:700; color:#adb5bd; min-width:44px; white-space:nowrap; }
         .ticker-px { font-size:1.5rem; font-weight:700; color:#fff; min-width:120px; font-variant-numeric:tabular-nums; }
         .ticker-chg { font-size:.95rem; font-variant-numeric:tabular-nums; min-width:140px; }
-        .ticker-item canvas { margin-left:auto; }
+
         /* ---------- Dashboard look ---------- */
         .text-muted-2 { color: var(--color-muted) !important; }
         .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(230px, 1fr)); gap:16px; }
@@ -275,8 +278,8 @@
         <div class="card p-3 mb-4">
             <div class="ticker-bar">
                 <div class="ticker-status"><span class="live-dot off" id="tk-dot"></span><strong>LIVE</strong><span id="tk-status">connecting...</span></div>
-                <div class="ticker-item" id="tk-ES"><span class="ticker-sym">/ES</span><span class="ticker-px">--</span><span class="ticker-chg"></span><canvas width="140" height="36"></canvas></div>
-                <div class="ticker-item" id="tk-NQ"><span class="ticker-sym">/NQ</span><span class="ticker-px">--</span><span class="ticker-chg"></span><canvas width="140" height="36"></canvas></div>
+                <div class="ticker-item" id="tk-ES"><div class="tk-head"><span class="ticker-sym">/ES</span><span class="ticker-px">--</span><span class="ticker-chg"></span><span class="tk-prev"></span></div><canvas class="tk-chart"></canvas></div>
+                <div class="ticker-item" id="tk-NQ"><div class="tk-head"><span class="ticker-sym">/NQ</span><span class="ticker-px">--</span><span class="ticker-chg"></span><span class="tk-prev"></span></div><canvas class="tk-chart"></canvas></div>
             </div>
         </div>
 
@@ -377,10 +380,12 @@
                     <div class="small text-secondary mt-2" id="range-summary"></div>
                 </div>
                 <div class="card p-4 d-flex flex-column mb-4">
-                    <h5 class="card-title text-center text-white mb-3">Account Value Over Time (Daily Cash Flow)</h5>
-                    <div class="chart-container flex-grow-1 mb-3">
-                        <canvas id="accountValueChart"></canvas>
+                    <h5 class="card-title text-center text-white mb-1">Cumulative Profit / Loss</h5>
+                    <div class="text-center mb-3"><span class="fs-4 fw-bold" id="cum-pnl-total">$0.00</span> <span class="small text-secondary" id="cum-pnl-sub"></span></div>
+                    <div class="chart-container flex-grow-1 mb-2">
+                        <canvas id="cumPnlChart"></canvas>
                     </div>
+                    <small class="text-muted text-center">Realized trading P/L only &mdash; deposits and withdrawals don't affect this line.</small>
                 </div>
                 <div class="card p-4 d-flex flex-column">
                     <h5 class="card-title text-center text-white mb-3">Realized Profit / Loss Per Day</h5>
@@ -609,6 +614,7 @@
         let totalWireSentAmount = 0;
         let reconData = null;
         let dailyPnlChart;
+        let cumPnlChart;
 
         const CHART_PROFIT_COLOR_HEX = '#22c55e'; 
         const CHART_PROFIT_COLOR_RGB = 'rgba(34, 197, 94, 0.75)'; 
@@ -956,6 +962,7 @@
                     borderColor: '#ffc107', borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0
                 });
             }
+            renderCumPnlChart(labels, cumulative);
             dailyPnlChart = new Chart(canvas.getContext('2d'), {
                 data: { labels, datasets },
                 options: {
@@ -969,6 +976,62 @@
                     plugins: {
                         legend: { labels: { color: 'white' } },
                         tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.parsed.y < 0 ? '-' : ''}$${Math.abs(c.parsed.y).toFixed(2)}` } }
+                    }
+                }
+            });
+        }
+
+        function renderCumPnlChart(labels, cumulative) {
+            const canvas = document.getElementById('cumPnlChart');
+            if (!canvas || typeof Chart === 'undefined') return;
+            if (cumPnlChart) cumPnlChart.destroy();
+            // Start the line at $0 the day before the first trade in range
+            const L = labels.length ? ['Start', ...labels] : [];
+            const D = labels.length ? [0, ...cumulative] : [];
+            const last = D.length ? D[D.length - 1] : 0;
+            const peak = D.length ? Math.max(...D) : 0;
+            const totEl = document.getElementById('cum-pnl-total');
+            if (totEl) {
+                totEl.textContent = `${last < 0 ? '-' : '+'}$${Math.abs(last).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                totEl.style.color = last >= 0 ? CHART_PROFIT_COLOR_HEX : CHART_LOSS_COLOR_HEX;
+            }
+            const subEl = document.getElementById('cum-pnl-sub');
+            if (subEl) {
+                const dd = peak - last;
+                subEl.textContent = labels.length ? `${labels.length} trading days · peak $${peak.toFixed(2)}${dd > 0.005 ? ` · $${dd.toFixed(2)} off peak` : ' · at peak'}` : '';
+            }
+            const ctx = canvas.getContext('2d');
+            const h = canvas.height || 400;
+            const gUp = ctx.createLinearGradient(0, 0, 0, h);
+            gUp.addColorStop(0, 'rgba(34, 197, 94, 0.40)'); gUp.addColorStop(1, 'rgba(34, 197, 94, 0.02)');
+            const gDn = ctx.createLinearGradient(0, 0, 0, h);
+            gDn.addColorStop(0, 'rgba(239, 68, 68, 0.02)'); gDn.addColorStop(1, 'rgba(239, 68, 68, 0.40)');
+            cumPnlChart = new Chart(ctx, {
+                type: 'line',
+                data: { labels: L, datasets: [{
+                    label: 'Cumulative P/L ($)', data: D,
+                    borderWidth: 2.5, tension: 0.15, pointRadius: 3, pointHoverRadius: 5,
+                    pointBackgroundColor: D.map((v, i) => i === 0 ? '#8b93a1' : (v - D[i - 1] >= 0 ? CHART_PROFIT_COLOR_HEX : CHART_LOSS_COLOR_HEX)),
+                    pointBorderWidth: 0,
+                    segment: { borderColor: c => c.p1.parsed.y >= 0 ? CHART_PROFIT_COLOR_HEX : CHART_LOSS_COLOR_HEX },
+                    borderColor: CHART_PROFIT_COLOR_HEX,
+                    fill: { target: 'origin', above: gUp, below: gDn }
+                }] },
+                options: {
+                    responsive: true, maintainAspectRatio: true,
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        y: { ticks: { color: 'white', callback: v => `${v < 0 ? '-' : ''}$${Math.abs(v).toLocaleString()}` },
+                             grid: { color: c => c.tick.value === 0 ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.06)' } },
+                        x: { ticks: { color: 'white' }, grid: { color: 'rgba(255,255,255,0.06)' } }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { callbacks: { label: c => {
+                            const v = c.parsed.y, i = c.dataIndex, day = i > 0 ? v - D[i - 1] : 0;
+                            const f = x => `${x < 0 ? '-' : '+'}$${Math.abs(x).toFixed(2)}`;
+                            return i === 0 ? 'Start: $0.00' : [`Total: ${f(v)}`, `Day: ${f(day)}`];
+                        } } }
                     }
                 }
             });
@@ -2237,26 +2300,147 @@
         const QUOTES_URL = 'http://localhost:8787/quotes';
         const tk = { last: {}, lastOk: null };
 
-        function drawSpark(canvas, pts) {
-            const ctx = canvas.getContext('2d');
-            const w = canvas.width, h = canvas.height;
-            ctx.clearRect(0, 0, w, h);
-            if (!pts || pts.length < 2) return;
-            const min = Math.min(...pts), max = Math.max(...pts) === min ? min + 1 : Math.max(...pts);
-            const up = pts[pts.length - 1] >= pts[0];
-            ctx.strokeStyle = up ? CHART_PROFIT_COLOR_HEX : CHART_LOSS_COLOR_HEX;
-            ctx.lineWidth = 1.6;
-            ctx.beginPath();
-            pts.forEach((v, i) => {
-                const x = 3 + (w - 6) * i / (pts.length - 1);
-                const y = 3 + (h - 6) * (1 - (v - min) / (max - min));
-                i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
-            });
-            ctx.stroke();
-            const lx = w - 3, ly = 3 + (h - 6) * (1 - (pts[pts.length - 1] - min) / (max - min));
-            ctx.fillStyle = ctx.strokeStyle;
-            ctx.beginPath(); ctx.arc(lx, ly, 3, 0, Math.PI * 2); ctx.fill();
+        // ---- Baseline chart: price vs prior close, green above / red below ----
+        const ET_FMT = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: 'numeric', hour12: false });
+        function etMinutes(ts) {           // minutes since midnight, New York time
+            const parts = ET_FMT.formatToParts(new Date(ts * 1000));
+            const h = +parts.find(p => p.type === 'hour').value % 24, m = +parts.find(p => p.type === 'minute').value;
+            return h * 60 + m;
         }
+        function etLabel(ts) {
+            return new Date(ts * 1000).toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit' });
+        }
+        let _dotPattern = null;
+        function dotPattern(ctx) {
+            if (_dotPattern) return _dotPattern;
+            const c = document.createElement('canvas'); c.width = 6; c.height = 6;
+            const g = c.getContext('2d'); g.fillStyle = 'rgba(255,255,255,0.10)'; g.fillRect(2, 2, 1.2, 1.2);
+            return (_dotPattern = ctx.createPattern(c, 'repeat'));
+        }
+        function drawBaseline(canvas, q) {
+            const dpr = window.devicePixelRatio || 1;
+            const W = canvas.clientWidth || 400, H = canvas.clientHeight || 160;
+            if (canvas.width !== Math.round(W * dpr) || canvas.height !== Math.round(H * dpr)) {
+                canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+            }
+            const ctx = canvas.getContext('2d');
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            ctx.clearRect(0, 0, W, H);
+
+            const closes = (Array.isArray(q.Closes) ? q.Closes : (Array.isArray(q.Spark) ? q.Spark : [])).map(Number);
+            if (closes.length < 2) return;
+            let times = Array.isArray(q.Times) && q.Times.length === closes.length ? q.Times.map(Number) : null;
+            const vols = Array.isArray(q.Vols) && q.Vols.length === closes.length ? q.Vols.map(Number) : null;
+            if (!times) { const now = Date.now() / 1000; times = closes.map((_, i) => now - (closes.length - 1 - i) * 60); }
+            const prev = Number(q.Prev) || closes[0];
+            const last = closes[closes.length - 1];
+
+            const padL = 4, padR = 66, padT = 8, padB = 18;
+            const plotW = W - padL - padR, plotH = H - padT - padB;
+            const t0 = times[0], tLast = times[times.length - 1];
+            // let the line stop part-way: extend the axis to 5:00 PM ET (futures close) when that's ahead
+            const toClose = (17 * 60 - etMinutes(tLast)) * 60;
+            const t1 = Math.max(tLast + 60, toClose > 0 && toClose < 12 * 3600 ? tLast + toClose : tLast + 60);
+            const lo = Math.min(prev, ...closes), hi = Math.max(prev, ...closes);
+            const span = (hi - lo) || 1, yMin = lo - span * 0.08, yMax = hi + span * 0.08;
+            const X = t => padL + plotW * (t - t0) / (t1 - t0);
+            const Y = v => padT + plotH * (1 - (v - yMin) / (yMax - yMin));
+            const baseY = Y(prev), lastX = X(tLast), lastY = Y(last);
+            const up = last >= prev;
+            const GREEN = '#22c55e', RED = '#ef4444';
+
+            // shade outside regular hours (before 9:30 / after 4:00 ET) with dots
+            ctx.fillStyle = dotPattern(ctx);
+            let runStart = null;
+            for (let i = 0; i <= times.length; i++) {
+                const off = i < times.length && (() => { const m = etMinutes(times[i]); return m < 570 || m >= 960; })();
+                if (off && runStart === null) runStart = times[i];
+                if (!off && runStart !== null) {
+                    const xe = i < times.length ? X(times[i]) : lastX;
+                    ctx.fillRect(X(runStart), padT, xe - X(runStart), plotH);
+                    runStart = null;
+                }
+            }
+
+            // volume bars along the bottom
+            if (vols) {
+                const vMax = Math.max(...vols) || 1, barW = Math.max(1, plotW / (closes.length * 1.3));
+                ctx.fillStyle = 'rgba(200,205,214,0.35)';
+                vols.forEach((v, i) => {
+                    const h = (v / vMax) * plotH * 0.22;
+                    if (h > 0.5) ctx.fillRect(X(times[i]) - barW / 2, padT + plotH - h, barW, h);
+                });
+            }
+
+            // price path
+            const path = new Path2D();
+            closes.forEach((v, i) => { const x = X(times[i]), y = Y(v); i ? path.lineTo(x, y) : path.moveTo(x, y); });
+            const area = new Path2D(path);
+            area.lineTo(lastX, baseY); area.lineTo(X(t0), baseY); area.closePath();
+
+            const drawSide = (clipTop, color, gradFrom, gradTo) => {
+                ctx.save();
+                ctx.beginPath();
+                clipTop ? ctx.rect(0, 0, W, baseY) : ctx.rect(0, baseY, W, H);
+                ctx.clip();
+                const g = ctx.createLinearGradient(0, clipTop ? padT : baseY, 0, clipTop ? baseY : padT + plotH);
+                g.addColorStop(0, gradFrom); g.addColorStop(1, gradTo);
+                ctx.fillStyle = g; ctx.fill(area);
+                ctx.strokeStyle = color; ctx.lineWidth = 1.8; ctx.lineJoin = 'round'; ctx.stroke(path);
+                ctx.restore();
+            };
+            drawSide(true, GREEN, 'rgba(34,197,94,0.30)', 'rgba(34,197,94,0.02)');
+            drawSide(false, RED, 'rgba(239,68,68,0.02)', 'rgba(239,68,68,0.30)');
+
+            // baseline (prior close) and last-price lines
+            ctx.setLineDash([5, 4]); ctx.lineWidth = 1;
+            ctx.strokeStyle = 'rgba(232,234,237,0.8)';
+            ctx.beginPath(); ctx.moveTo(padL, baseY); ctx.lineTo(W - padR, baseY); ctx.stroke();
+            ctx.strokeStyle = up ? 'rgba(34,197,94,0.7)' : 'rgba(239,68,68,0.7)';
+            ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(W - padR, lastY); ctx.stroke();
+            ctx.setLineDash([]);
+
+            // last-price dot with halo
+            ctx.fillStyle = up ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)';
+            ctx.beginPath(); ctx.arc(lastX, lastY, 7, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = up ? GREEN : RED;
+            ctx.beginPath(); ctx.arc(lastX, lastY, 3.5, 0, Math.PI * 2); ctx.fill();
+
+            // right-side price tags (prior close = white, last = colored)
+            const tag = (y, text, bg, fg) => {
+                ctx.font = '600 11px Inter, Segoe UI, sans-serif';
+                const w = ctx.measureText(text).width + 10, h = 18;
+                const ty = Math.min(Math.max(y - h / 2, padT), padT + plotH - h);
+                ctx.fillStyle = bg; ctx.beginPath();
+                if (ctx.roundRect) ctx.roundRect(W - padR + 4, ty, w, h, 4); else ctx.rect(W - padR + 4, ty, w, h);
+                ctx.fill();
+                ctx.fillStyle = fg; ctx.textBaseline = 'middle'; ctx.fillText(text, W - padR + 9, ty + h / 2 + 0.5);
+                return [ty, ty + h];
+            };
+            const fmt = v => v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            const [b0, b1] = tag(baseY, fmt(prev), '#e8eaed', '#111317');
+            let ly = lastY;
+            if (Math.abs(lastY - baseY) < 19) ly = lastY < baseY ? baseY - 19 : baseY + 19;  // don't overlap tags
+            tag(ly, fmt(last), up ? '#16a34a' : '#dc2626', '#ffffff');
+
+            // time labels every 3 hours (ET)
+            ctx.fillStyle = '#8b93a1'; ctx.font = '10px Inter, Segoe UI, sans-serif'; ctx.textBaseline = 'alphabetic';
+            const firstMin = etMinutes(t0);
+            let tick = t0 + ((180 - (firstMin % 180)) % 180) * 60;
+            for (; tick < t1; tick += 3 * 3600) {
+                const x = X(tick);
+                if (x < padL + 20 || x > W - padR - 20) continue;
+                const lbl = etLabel(tick).replace(':00', ':00');
+                ctx.fillText(lbl, x - ctx.measureText(lbl).width / 2, H - 4);
+            }
+        }
+        const tkLastQuote = {};
+        window.addEventListener('resize', () => {
+            Object.entries(tkLastQuote).forEach(([k, q]) => {
+                const el = document.getElementById('tk-' + k);
+                if (el) drawBaseline(el.querySelector('canvas'), q);
+            });
+        });
 
         function updateTicker(key, q) {
             const el = document.getElementById('tk-' + key);
@@ -2277,8 +2461,10 @@
             const sign = chg >= 0 ? '+' : '-';
             c.textContent = `${sign}${Math.abs(chg).toFixed(2)}  (${sign}${Math.abs(pct).toFixed(2)}%)`;
             c.style.color = chg >= 0 ? CHART_PROFIT_COLOR_HEX : CHART_LOSS_COLOR_HEX;
-            const spark = Array.isArray(q.Spark) ? q.Spark.map(Number) : (q.Spark != null ? [Number(q.Spark)] : []);
-            drawSpark(el.querySelector('canvas'), spark);
+            const pv = el.querySelector('.tk-prev');
+            if (pv) pv.textContent = `prev close ${prev.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            tkLastQuote[key] = q;
+            drawBaseline(el.querySelector('canvas'), q);
         }
 
         function setTickerStatus() {
